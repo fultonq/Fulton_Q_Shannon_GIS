@@ -1,15 +1,30 @@
-[2026-10-14 10:36:27] INFO    ========================================================================
-[2026-10-14 10:36:27] INFO    DDOT GIS pipeline v2.0.0 - run started
-[2026-10-14 10:36:27] INFO    Target CRS EPSG:2248 (NAD83 / Maryland (ftUS)); snap tolerance 150.0 ft
-[2026-10-14 10:36:27] INFO    [1/5] Extracting from DC GIS REST services
-[2026-10-14 10:36:27] INFO      Roadway SubBlock: 23104 matching features (24 request(s))
-[2026-10-14 10:36:47] INFO      DDOT - Public Space Construction Permits - Status: 7934 matching features (8 request(s))
-[2026-10-14 10:36:51] INFO      CityworksRequest: 692 matching features (1 request(s))
-[2026-10-14 10:36:52] INFO    [2/5] Cleaning and reprojecting to EPSG:2248
-[2026-10-14 10:36:52] INFO    [3/5] Snapping 7934 permits to subblock centerlines
-[2026-10-14 10:36:52] INFO      permits snapped: 7829 / 7934; service requests matched: 674 / 692
-[2026-10-14 10:36:52] INFO    [4/5] Enriching subblocks, aggregating blocks, building QA layers and insights
-[2026-10-14 10:36:55] INFO      dual-conflict subblocks: 106; blocks: 14541 (dual-conflict 139)
-[2026-10-14 10:36:55] INFO    [5/5] Writing data/ddot_maintenance_operations.gpkg
-[2026-10-14 10:36:58] INFO    Wrote Project_Summary_Report.md
-[2026-10-14 10:36:58] INFO    Run f53dc5f2-31c7-4b4e-a4d2-c99d0a6cb3c5 complete in 29.0 s
+[2026-10-14 10:23:50] INFO    ========================================================================
+[2026-10-14 10:23:50] INFO    DDOT GIS pipeline v2.0.0 - run started
+[2026-10-14 10:23:50] INFO    Target CRS EPSG:2248 (NAD83 / Maryland (ftUS)); snap tolerance 150.0 ft
+[2026-10-14 10:23:50] INFO    [1/5] Extracting from DC GIS REST services
+[2026-10-14 10:23:50] INFO      Roadway SubBlock: 23104 matching features (24 request(s))
+[2026-10-14 10:24:09] INFO      DDOT - Public Space Construction Permits - Status: 7934 matching features (8 request(s))
+[2026-10-14 10:24:14] INFO      CityworksRequest: 692 matching features (1 request(s))
+[2026-10-14 10:24:14] INFO    [2/5] Cleaning and reprojecting to EPSG:2248
+[2026-10-14 10:24:14] INFO    [3/5] Snapping 7934 permits to subblock centerlines
+[2026-10-14 10:24:14] INFO      permits snapped: 7829 / 7934; service requests matched: 674 / 692
+[2026-10-14 10:24:14] INFO    [4/5] Enriching subblocks, aggregating blocks, building QA layers and insights
+[2026-10-14 10:24:17] INFO      dual-conflict subblocks: 106; blocks: 14541 (dual-conflict 139)
+[2026-10-14 10:24:17] INFO    [5/5] Writing data/ddot_maintenance_operations.gpkg
+[2026-10-14 10:24:20] INFO    Wrote Project_Summary_Report.md
+[2026-10-14 10:24:20] INFO    Run 94a3ea4f-87c0-48c5-ab05-8fe40d963b30 complete in 28.5 s
+[2026-10-14 11:17:03] INFO    ========================================================================
+[2026-10-14 11:17:03] INFO    DDOT GIS pipeline v2.0.0 - run started
+[2026-10-14 11:17:03] INFO    Target CRS EPSG:2248 (NAD83 / Maryland (ftUS)); snap tolerance 150.0 ft
+[2026-10-14 11:17:03] INFO    [1/5] Extracting from DC GIS REST services
+[2026-10-14 11:17:03] INFO      Roadway SubBlock: 23104 matching features (24 request(s))
+[2026-10-14 11:17:23] INFO      DDOT - Public Space Construction Permits - Status: 7934 matching features (8 request(s))
+[2026-10-14 11:17:29] INFO      CityworksRequest: 692 matching features (1 request(s))
+[2026-10-14 11:17:29] INFO    [2/5] Cleaning and reprojecting to EPSG:2248
+[2026-10-14 11:17:29] INFO    [3/5] Snapping 7934 permits to subblock centerlines
+[2026-10-14 11:17:29] INFO      permits snapped: 7829 / 7934; service requests matched: 674 / 692
+[2026-10-14 11:17:29] INFO    [4/5] Enriching subblocks, aggregating blocks, building QA layers and insights
+[2026-10-14 11:17:32] INFO      dual-conflict subblocks: 106; blocks: 14541 (dual-conflict 139)
+[2026-10-14 11:17:32] INFO    [5/5] Writing data/ddot_maintenance_operations.gpkg
+[2026-10-14 11:17:34] INFO    Wrote Project_Summary_Report.md
+[2026-10-14 11:17:34] INFO    Run a8a3aaba-0ad9-4544-8479-7e609b4d19a6 complete in 29.7 s
