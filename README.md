@@ -18,7 +18,7 @@ Deliverables:
 * QA layers that show every snap and assignment as a line from the source location.
 * A QGIS project (`ddot_maintenance_operations.qgz`) with the local processed layers and the
   filtered live DC GIS REST feeds.
-* A geoprocessing log, a per-run history table, the automated Python scripts, and this documentation.
+* A geoprocessing log, a per-run history table, the automated Python processing script, and this documentation.
 
 Results for the current run are summarised in **`Project_Summary_Report.md`**.
 
@@ -29,7 +29,6 @@ Fulton_Q_Shannon_GIS_V2/
 ├── README.md                          # This file: technical documentation and data dictionary
 ├── Project_Summary_Report.md          # Executive report generated from the latest run
 ├── 01_pull_and_process_data.py        # REST extraction, snapping, enrichment, GeoPackage + report
-├── 02_create_qgis_project.py          # QGIS project builder, validator and zip packager (PyQGIS)
 ├── ddot_maintenance_operations.qgz    # QGIS project (relative paths - open directly after unzipping)
 ├── data/
 │   └── ddot_maintenance_operations.gpkg
@@ -100,8 +99,8 @@ The executed queries are also recorded per run in the `geoprocessing_history` ta
 7. **Output** - layers, insight tables and a run-history row are written to `ddot_maintenance_operations.gpkg`
    atomically (temp file + rename; prior run history is carried forward), and
    `Project_Summary_Report.md` is regenerated.
-8. **QGIS project** - `02_create_qgis_project.py` builds the styled project with PyQGIS, re-opens it
-   to validate every layer and confirm relative paths, then zips the folder.
+8. **QGIS project** - `ddot_maintenance_operations.qgz` (QGIS 3.40 LTR) references the GeoPackage
+   layers by relative path, so the project opens anywhere once the folder is unzipped.
 
 Equidistant ties are resolved deterministically (first match). Metrics are attributed per subblock
 feature, so duplicate subblock keys (none in the current data) cannot double-count.
@@ -206,21 +205,17 @@ The live feeds and basemaps require internet access; the analysis layers do not.
 
 ## 7. Reproducing the Analysis
 
-Requirements: Python ≥ 3.10 with `geopandas>=1.0 shapely>=2.0 pyogrio pyproj requests` for step 01,
-and QGIS ≥ 3.28 (LTR recommended) for step 02.
+Requirements: Python ≥ 3.10 with `geopandas>=1.0 shapely>=2.0 pyogrio pyproj requests`, and
+QGIS ≥ 3.28 (3.40 LTR recommended) to open the project.
 
 ```bash
-# Step 01 - refresh data, GeoPackage, log and summary report (run from this folder)
+# Refresh data, GeoPackage, log and summary report (run from this folder)
 python 01_pull_and_process_data.py
 #   options: --tolerance-ft 150 --crs EPSG:2248 --permit-min-expiration 2025-10-01 --sr-min-initiated 2025-10-01
-
-# Step 02 - build/validate the QGIS project and package the zip (QGIS's Python)
-python3 02_create_qgis_project.py --first-name Jane --middle-initial Q --last-name Public --version-label V2
-#   Windows: "C:\Program Files\QGIS 3.40.x\bin\python-qgis-ltr.bat" 02_create_qgis_project.py ...
-#   macOS:   /Applications/QGIS-LTR.app/Contents/MacOS/bin/python3 02_create_qgis_project.py ...
 ```
 
-Both scripts exit non-zero on failure and log to `logs/geoprocessing_history.log`.
+The script exits non-zero on failure and logs to `logs/geoprocessing_history.log`. Re-opening
+`ddot_maintenance_operations.qgz` afterwards shows the refreshed layers.
 
 ## 8. Limitations
 
@@ -230,27 +225,12 @@ Both scripts exit non-zero on failure and log to `logs/geoprocessing_history.log
 * SRs on alleys or driveways are excluded by design because those road types are filtered out.
 * Dates are stored in UTC; the summary report presents them in America/New_York.
 
-## 9. Source Repository: Build & Test
+## 9. Tests
 
-This repository is the deliverable folder plus the tooling used to produce it. The tooling
-(`generate_and_launch_gis.py`, `tests/`, `requirements*.txt`, `pytest.ini`) is excluded from the
-packaged zip.
+The processing and packaging logic is covered by a pytest suite in `tests/` (not part of the zip).
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements-dev.txt
-
-# Full rebuild into build/Fulton_Q_Shannon_GIS_V2/ and build/Fulton_Q_Shannon_GIS_V2.zip, then open QGIS
-.venv/bin/python generate_and_launch_gis.py Fulton_Q_Shannon_GIS_V2
-#   --no-launch, --skip-fetch (reuse GeoPackage), --no-live-layers, --tolerance-ft, --crs, --qgis-python
-
-# Tests (one test hits the live REST services; skip it offline with -m "not network")
-.venv/bin/python -m pytest
+python -m pip install -r requirements-dev.txt
+python -m pytest                    # one test queries the live REST services
+python -m pytest -m "not network"   # offline only
 ```
-
-The runner auto-detects a PyQGIS-capable Python (`$QGIS_PYTHON`, system `python3` on Linux,
-`python-qgis-ltr.bat` on Windows, the QGIS app bundle on macOS).
-
-Design principles: no silent fallbacks (failures exit non-zero with a logged reason; no sample data
-is ever substituted); complete server-side-filtered extraction by object-ID batches; atomic
-GeoPackage and zip writes; and a `.qgz` written and re-validated by PyQGIS with relative paths.

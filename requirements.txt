@@ -1,4 +1,4 @@
-# Step 01 / runner (this venv). Step 02 uses the Python bundled with QGIS >= 3.28.
+# 01_pull_and_process_data.py
 geopandas>=1.0
 pandas>=2.2
 pyogrio>=0.9

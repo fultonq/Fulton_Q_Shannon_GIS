@@ -5,7 +5,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 
-# Build output (runner writes build/<Name>_GIS_V2/ and the zip)
+# Build output (zip and local builds)
 build/
 *.zip
 
