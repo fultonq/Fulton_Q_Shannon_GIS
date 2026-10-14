@@ -1,0 +1,7 @@
+# Step 01 / runner (this venv). Step 02 uses the Python bundled with QGIS >= 3.28.
+geopandas>=1.0
+pandas>=2.2
+pyogrio>=0.9
+pyproj>=3.6
+requests>=2.31
+shapely>=2.0

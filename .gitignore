@@ -1,0 +1,17 @@
+# Environments / IDE
+.venv/
+.idea/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build output (runner writes build/<Name>_GIS_V2/ and the zip)
+build/
+*.zip
+
+# Transient GeoPackage / QGIS files
+data/.*.tmp.gpkg
+*.gpkg-wal
+*.gpkg-shm
+*.qgz~
+*.qgs~
