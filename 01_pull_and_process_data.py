@@ -52,7 +52,7 @@ from pyproj import CRS
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-__version__ = "2.0.0"
+__version__ = "2.3.0"
 
 LOG = logging.getLogger("ddot_gis.process")
 
@@ -81,7 +81,10 @@ REPORT_NAME = "Project_Summary_Report.md"
 # Source schema fields the pipeline depends on.
 SUBBLOCK_KEY_FIELD = "SUBBLOCKKEY"
 PERMIT_DATE_FIELD = "ExpirationDate"
+PERMIT_START_FIELD = "EffectiveDate"
+PERMIT_ID_FIELD = "PermitNumber"  # TOPS stores one row per work-location address of a permit
 SR_DATE_FIELD = "INITIATEDDATE"
+SR_ID_FIELD = "REQUESTID"  # CSRNUMBER is published but null on every record
 
 # Derived fields.
 UID = "SUBBLOCK_UID"
@@ -386,26 +389,67 @@ def enrich_subblocks(
     service_requests: gpd.GeoDataFrame,
     permit_date_field: str = PERMIT_DATE_FIELD,
     sr_date_field: str = SR_DATE_FIELD,
+    permit_id_field: str = PERMIT_ID_FIELD,
+    permit_start_field: str = PERMIT_START_FIELD,
 ) -> gpd.GeoDataFrame:
-    """Aggregate matched permits/SRs onto subblocks and derive the conflict flag."""
+    """Aggregate matched permits/SRs onto subblocks and derive the conflict flag.
 
-    def aggregate(df: pd.DataFrame, count_name: str, date_field: str, date_name: str) -> pd.DataFrame:
+    Dates: MIN_PERMIT_EFF_DATE (earliest permit start) and MAX_PERMIT_EXP_DATE
+    (latest permit end) bound the permitted work window; MIN_SR_INIT_DATE
+    (oldest open SR) and MAX_SR_INIT_DATE (newest) bound the reporting window.
+
+    PERMIT_COUNT counts permit rows (one per work-location address);
+    DISTINCT_PERMIT_COUNT counts unique ``permit_id_field`` values.
+    DISTINCT_SR_LOCATIONS counts unique SR locations, so repeat reports
+    geocoded to the same point (e.g. a block-range address) count once.
+    """
+
+    def aggregate(df: pd.DataFrame, count_name: str, dates: dict[str, tuple[str, str]]) -> pd.DataFrame:
+        """``dates`` maps output name -> (source field, "min"/"max"); missing source fields are skipped."""
         m = df[df[SUBBLOCK_IDX].notna()]
-        return m.groupby(m[SUBBLOCK_IDX].astype("int64")).agg(
-            **{count_name: (SUBBLOCK_IDX, "size"), date_name: (date_field, "max")}
-        )
+        specs = {name: spec for name, spec in dates.items() if spec[0] in m.columns}
+        return m.groupby(m[SUBBLOCK_IDX].astype("int64")).agg(**{count_name: (SUBBLOCK_IDX, "size"), **specs})
 
-    p = aggregate(permits, "PERMIT_COUNT", permit_date_field, "MAX_PERMIT_EXP_DATE")
-    s = aggregate(service_requests, "SR_COUNT", sr_date_field, "MAX_SR_INIT_DATE")
+    p = aggregate(permits, "PERMIT_COUNT", {"MIN_PERMIT_EFF_DATE": (permit_start_field, "min"),
+                                            "MAX_PERMIT_EXP_DATE": (permit_date_field, "max")})
+    p["DISTINCT_PERMIT_COUNT"] = _distinct_permits(permits, permits[SUBBLOCK_IDX], permit_id_field)
+    s = aggregate(service_requests, "SR_COUNT", {"MIN_SR_INIT_DATE": (sr_date_field, "min"),
+                                                 "MAX_SR_INIT_DATE": (sr_date_field, "max")})
+    s["DISTINCT_SR_LOCATIONS"] = _distinct_locations(service_requests, service_requests[SUBBLOCK_IDX])
 
     out = subblocks.join(p, how="left").join(s, how="left")
     out["PERMIT_COUNT"] = out["PERMIT_COUNT"].fillna(0).astype("int32")
+    out["DISTINCT_PERMIT_COUNT"] = out["DISTINCT_PERMIT_COUNT"].fillna(0).astype("int32")
+    out["DISTINCT_SR_LOCATIONS"] = out["DISTINCT_SR_LOCATIONS"].fillna(0).astype("int32")
     out["SR_COUNT"] = out["SR_COUNT"].fillna(0).astype("int32")
     has_p = out["PERMIT_COUNT"] > 0
     has_s = out["SR_COUNT"] > 0
     out["FLAG_BOTH_PERMIT_AND_SR"] = (has_p & has_s).astype("int32")
     out["ACTIVITY_CLASS"] = _activity_class(has_p, has_s)
     return out
+
+
+def _distinct_permits(permits: pd.DataFrame, group_key: pd.Series, permit_id_field: str = PERMIT_ID_FIELD) -> pd.Series:
+    """Unique permits per ``group_key`` value (rows with a null key are ignored).
+
+    Falls back to counting rows when the permit identifier is missing.
+    """
+    m = permits[group_key.notna()]
+    key = group_key[group_key.notna()]
+    if permit_id_field not in m.columns:
+        return m.groupby(key).size()
+    return m.groupby(key)[permit_id_field].nunique()
+
+
+def _distinct_locations(points: gpd.GeoDataFrame, group_key: pd.Series) -> pd.Series:
+    """Unique point locations per ``group_key`` value, rounded to the nearest CRS unit (1 ft in EPSG:2248)."""
+    ok = group_key.notna()
+    geoms = points.geometry[ok].to_numpy()
+    xy = pd.Series(
+        [f"{x:.0f},{y:.0f}" for x, y in zip(shapely.get_x(geoms), shapely.get_y(geoms))],
+        index=group_key[ok].index,
+    )
+    return xy.groupby(group_key[ok]).nunique()
 
 
 def _activity_class(has_p: pd.Series, has_s: pd.Series) -> np.ndarray:
@@ -450,12 +494,24 @@ def connector_lines(
     return out
 
 
+def _lookup(values: pd.Series, row_idx: pd.Series) -> pd.Series:
+    """``values`` (RangeIndex-aligned with the subblocks) looked up by a nullable row pointer."""
+    out = pd.Series(pd.NA, index=row_idx.index, dtype="object")
+    ok = row_idx.notna()
+    out[ok] = values.to_numpy()[row_idx[ok].to_numpy(dtype="int64")]
+    return out
+
+
 def _mode(s: pd.Series):
     s = s.dropna()
     return s.mode().iat[0] if len(s) else None
 
 
-def aggregate_blocks(enriched: gpd.GeoDataFrame, units_per_foot: float) -> gpd.GeoDataFrame:
+def aggregate_blocks(
+    enriched: gpd.GeoDataFrame,
+    units_per_foot: float,
+    permits: pd.DataFrame | None = None,
+) -> gpd.GeoDataFrame:
     """Roll enriched subblocks up to roadway blocks (BLOCKID).
 
     Subblocks without a BLOCKID become single-subblock blocks keyed
@@ -463,6 +519,10 @@ def aggregate_blocks(enriched: gpd.GeoDataFrame, units_per_foot: float) -> gpd.G
     Block-level FLAG_BOTH_PERMIT_AND_SR means the block has permits and SRs,
     possibly on different subblocks; SUBBLOCKS_WITH_BOTH counts subblock-level
     conflicts.
+
+    DISTINCT_PERMIT_COUNT is recounted from ``permits`` so a permit whose
+    addresses span several subblocks of one block counts once; without
+    ``permits`` it falls back to the subblock sum (an upper bound).
     """
     df = enriched.copy()
     block_id = df["BLOCKID"].astype("string") if "BLOCKID" in df.columns else pd.Series(pd.NA, index=df.index, dtype="string")
@@ -474,17 +534,25 @@ def aggregate_blocks(enriched: gpd.GeoDataFrame, units_per_foot: float) -> gpd.G
         **{c: (c, "first") for c in first_cols},
         SUBBLOCK_COUNT=(UID, "size"),
         PERMIT_COUNT=("PERMIT_COUNT", "sum"),
+        DISTINCT_PERMIT_COUNT=("DISTINCT_PERMIT_COUNT", "sum"),
+        **({"MIN_PERMIT_EFF_DATE": ("MIN_PERMIT_EFF_DATE", "min")} if "MIN_PERMIT_EFF_DATE" in df.columns else {}),
         MAX_PERMIT_EXP_DATE=("MAX_PERMIT_EXP_DATE", "max"),
         SR_COUNT=("SR_COUNT", "sum"),
+        DISTINCT_SR_LOCATIONS=("DISTINCT_SR_LOCATIONS", "sum"),  # each SR sits on exactly one subblock
+        MIN_SR_INIT_DATE=("MIN_SR_INIT_DATE", "min"),
         MAX_SR_INIT_DATE=("MAX_SR_INIT_DATE", "max"),
         SUBBLOCKS_WITH_BOTH=("FLAG_BOTH_PERMIT_AND_SR", "sum"),
     )
     if "WARD_ID" in df.columns:
         attrs["WARD_ID"] = g["WARD_ID"].agg(_mode)
+    if permits is not None:
+        block_of = _lookup(df[BLOCK_UID], permits[SUBBLOCK_IDX])
+        attrs["DISTINCT_PERMIT_COUNT"] = _distinct_permits(permits, block_of).reindex(attrs.index, fill_value=0)
     geoms = df[[BLOCK_UID, df.geometry.name]].dissolve(by=BLOCK_UID).geometry
     out = gpd.GeoDataFrame(attrs, geometry=geoms.reindex(attrs.index).line_merge(), crs=enriched.crs).reset_index()
 
-    for c in ("SUBBLOCK_COUNT", "PERMIT_COUNT", "SR_COUNT", "SUBBLOCKS_WITH_BOTH"):
+    for c in ("SUBBLOCK_COUNT", "PERMIT_COUNT", "DISTINCT_PERMIT_COUNT", "SR_COUNT", "DISTINCT_SR_LOCATIONS",
+              "SUBBLOCKS_WITH_BOTH"):
         out[c] = out[c].astype("int32")
     has_p, has_s = out["PERMIT_COUNT"] > 0, out["SR_COUNT"] > 0
     out["FLAG_BOTH_PERMIT_AND_SR"] = (has_p & has_s).astype("int32")
@@ -494,32 +562,48 @@ def aggregate_blocks(enriched: gpd.GeoDataFrame, units_per_foot: float) -> gpd.G
 
 
 def top_conflicts(enriched: gpd.GeoDataFrame) -> pd.DataFrame:
-    """All dual-conflict subblocks ranked by permits + SRs (ties: SRs, then permits)."""
+    """All dual-conflict subblocks ranked by distinct permits + distinct SR locations.
+
+    Ties: distinct SR locations, SR count, distinct permits, permit rows, then SUBBLOCK_UID.
+    """
     cols = [c for c in (UID, "ROUTENAME", "ROADWAY_TYPE", "FROMSTREET", "TOSTREET", "WARD_ID", "BLOCKID")
             if c in enriched.columns]
     c = enriched.loc[enriched["FLAG_BOTH_PERMIT_AND_SR"] == 1,
-                     [*cols, "PERMIT_COUNT", "SR_COUNT", "MAX_PERMIT_EXP_DATE", "MAX_SR_INIT_DATE"]].copy()
-    c["ACTIVITY_SCORE"] = (c["PERMIT_COUNT"] + c["SR_COUNT"]).astype("int32")
-    c = c.sort_values(["ACTIVITY_SCORE", "SR_COUNT", "PERMIT_COUNT", UID], ascending=[False, False, False, True])
+                     [*cols, "DISTINCT_PERMIT_COUNT", "PERMIT_COUNT", "DISTINCT_SR_LOCATIONS", "SR_COUNT",
+                      *[d for d in ("MIN_PERMIT_EFF_DATE", "MAX_PERMIT_EXP_DATE") if d in enriched.columns],
+                      "MIN_SR_INIT_DATE", "MAX_SR_INIT_DATE"]].copy()
+    c["ACTIVITY_SCORE"] = (c["DISTINCT_PERMIT_COUNT"] + c["DISTINCT_SR_LOCATIONS"]).astype("int32")
+    c = c.sort_values(
+        ["ACTIVITY_SCORE", "DISTINCT_SR_LOCATIONS", "SR_COUNT", "DISTINCT_PERMIT_COUNT", "PERMIT_COUNT", UID],
+        ascending=[False, False, False, False, False, True],
+    )
     c.insert(0, "RANK", np.arange(1, len(c) + 1, dtype="int32"))
     return pd.DataFrame(c).reset_index(drop=True)
 
 
-def ward_summary(enriched: gpd.GeoDataFrame) -> pd.DataFrame:
+def ward_summary(enriched: gpd.GeoDataFrame, permits: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Activity per ward. DISTINCT_PERMITS needs ``permits`` (falls back to summing subblock counts)."""
     if "WARD_ID" not in enriched.columns:
         return pd.DataFrame()
     df = enriched.assign(WARD=enriched["WARD_ID"].fillna("Unknown").astype(str))
     g = df.groupby("WARD", sort=True)
-    return pd.DataFrame(
+    if permits is not None:
+        distinct = _distinct_permits(permits, _lookup(df["WARD"], permits[SUBBLOCK_IDX]))
+    else:
+        distinct = g["DISTINCT_PERMIT_COUNT"].sum()
+    out = pd.DataFrame(
         {
             "SUBBLOCKS": g.size(),
             "SUBBLOCKS_WITH_PERMITS": g["PERMIT_COUNT"].apply(lambda s: int((s > 0).sum())),
             "SUBBLOCKS_WITH_SRS": g["SR_COUNT"].apply(lambda s: int((s > 0).sum())),
             "DUAL_CONFLICT_SUBBLOCKS": g["FLAG_BOTH_PERMIT_AND_SR"].sum(),
-            "PERMITS": g["PERMIT_COUNT"].sum(),
+            "DISTINCT_PERMITS": distinct,
+            "PERMIT_LOCATIONS": g["PERMIT_COUNT"].sum(),
             "OPEN_SRS": g["SR_COUNT"].sum(),
+            "DISTINCT_SR_LOCATIONS": g["DISTINCT_SR_LOCATIONS"].sum(),
         }
-    ).astype("int64").reset_index()
+    )
+    return out.fillna(0).astype("int64").rename_axis("WARD").reset_index()
 
 
 def activity_summary(enriched: gpd.GeoDataFrame, units_per_foot: float) -> pd.DataFrame:
@@ -655,10 +739,12 @@ coordinate repairs with permitted work and avoid duplicate or wasted effort.
 | Metric | Value |
 | --- | --- |
 | Roadway subblocks analysed (Street / Service Road / Ramp) | {g('subblocks_written'):,} |
-| Qualifying permits retrieved | {g('permits_fetched'):,} |
-| Permits snapped to a centerline (<= {h['snap_tolerance_ft']:g} ft) | {g('permits_snapped'):,} ({pct(g('permits_snapped'), g('permits_valid'))}) |
+| Qualifying permit work-location records retrieved | {g('permits_fetched'):,} |
+| Distinct qualifying permits (`{PERMIT_ID_FIELD}`) | {g('permits_distinct', g('permits_valid')):,} |
+| Permit records snapped to a centerline (<= {h['snap_tolerance_ft']:g} ft) | {g('permits_snapped'):,} ({pct(g('permits_snapped'), g('permits_valid'))}) |
 | Open service requests retrieved | {g('srs_fetched'):,} |
 | Service requests matched to a subblock (<= {h['snap_tolerance_ft']:g} ft) | {g('srs_matched'):,} ({pct(g('srs_matched'), g('srs_valid'))}) |
+| Distinct locations among matched service requests | {g('srs_distinct_locations_matched', g('srs_matched')):,} |
 | Subblocks with at least one permit | {g('subblocks_with_permits'):,} |
 | Subblocks with at least one open SR | {g('subblocks_with_srs'):,} |
 | **Dual-conflict subblocks (permit AND open SR)** | **{g('dual_conflict_subblocks'):,}** |
@@ -671,9 +757,13 @@ coordinate repairs with permitted work and avoid duplicate or wasted effort.
 
 {by_ward}
 
-### Top {min(top_n, len(ranked))} dual-conflict subblocks (ranked by permits + SRs)
+### Top {min(top_n, len(ranked))} dual-conflict subblocks (ranked by distinct permits + distinct SR locations)
 
-The full ranked list is in the `{TABLE_TOP_CONFLICTS}` table.
+The full ranked list is in the `{TABLE_TOP_CONFLICTS}` table. `DISTINCT_PERMIT_COUNT` counts unique
+permits; `PERMIT_COUNT` counts their work-location addresses on the subblock. `DISTINCT_SR_LOCATIONS`
+counts unique SR locations; `SR_COUNT` includes repeat reports geocoded to the same point.
+`MIN_PERMIT_EFF_DATE` -> `MAX_PERMIT_EXP_DATE` is the permitted work window on the subblock;
+`MIN_SR_INIT_DATE` is the oldest open SR (how long the defect has waited).
 
 {markdown_table(top_table)}
 
@@ -687,8 +777,17 @@ The full ranked list is in the `{TABLE_TOP_CONFLICTS}` table.
 
 ## Data Quality Notes
 
-* Permits further than {h['snap_tolerance_ft']:g} ft from any qualifying subblock are kept in `permits_snapped`
-  with `SNAPPED = 0` and no `SUBBLOCK_UID`: {g('permits_unmatched'):,} permit(s).
+* The permits service stores one row per work-location address, so a multi-address permit appears
+  several times: {g('permits_valid'):,} rows represent {g('permits_distinct', g('permits_valid')):,} distinct permits.
+  `PERMIT_COUNT` counts rows (work footprint); `DISTINCT_PERMIT_COUNT` counts permits and drives the ranking.
+* Repeat service requests at the same location (often block-range addresses such as
+  "2900 - 2999 BLOCK OF ...", geocoded to one point) count once in `DISTINCT_SR_LOCATIONS`:
+  {g('srs_matched'):,} matched requests sit at {g('srs_distinct_locations_matched', g('srs_matched')):,} distinct locations.
+* Open SR status mix: {g('sr_status_counts', 'n/a') or 'n/a'}. Only CLOSED / CANCEL / COMPLETE are
+  excluded, so `INSPCOMP` (inspection complete) counts as open - **confirm this definition with the requester**.
+* `CSRNUMBER` is published but empty on every service request; `{SR_ID_FIELD}` is used as the request identifier.
+* Permit records further than {h['snap_tolerance_ft']:g} ft from any qualifying subblock are kept in `permits_snapped`
+  with `SNAPPED = 0` and no `SUBBLOCK_UID`: {g('permits_unmatched'):,} record(s).
 * Service requests further than {h['snap_tolerance_ft']:g} ft from a qualifying subblock (e.g. located on
   alleys or driveways) are not counted: {g('srs_unmatched'):,} request(s).
 {qa_rows}* Subblocks without a BLOCKID are treated as single-subblock blocks: {g('subblocks_without_blockid'):,}.
@@ -779,14 +878,14 @@ def run(opts: RunOptions, client: ArcGISClient | None = None) -> dict:
     LOG.info("[4/5] Enriching subblocks, aggregating blocks, building QA layers and insights")
     enriched = enrich_subblocks(subblocks, permits, srs)
     n_conflict = int(enriched["FLAG_BOTH_PERMIT_AND_SR"].sum())
-    blocks = aggregate_blocks(enriched, per_ft)
+    blocks = aggregate_blocks(enriched, per_ft, permits)
     n_block_conflict = int(blocks["FLAG_BOTH_PERMIT_AND_SR"].sum())
     permits_orig = original_points(permits)
     qa_permit = connector_lines(permits, subblocks, ["PermitNumber", UID, "NEAR_DIST_FT"], per_ft, ("ORIG_X", "ORIG_Y"))
-    qa_sr = connector_lines(srs, subblocks, ["CSRNUMBER", "DESCRIPTION", UID, "NEAR_DIST_FT"], per_ft)
+    qa_sr = connector_lines(srs, subblocks, [SR_ID_FIELD, "DESCRIPTION", "STATUS", UID, "NEAR_DIST_FT"], per_ft)
     insights = {
         TABLE_TOP_CONFLICTS: top_conflicts(enriched),
-        TABLE_WARD_SUMMARY: ward_summary(enriched),
+        TABLE_WARD_SUMMARY: ward_summary(enriched, permits),
         TABLE_ACTIVITY_SUMMARY: activity_summary(enriched, per_ft),
     }
     snap_d = qa_permit["LENGTH_FT"]
@@ -806,12 +905,16 @@ def run(opts: RunOptions, client: ArcGISClient | None = None) -> dict:
         "permits_fetched": len(p_raw),
         "permits_null_geometry": p_null,
         "permits_valid": len(permits),
+        "permits_distinct": int(permits[PERMIT_ID_FIELD].nunique()) if PERMIT_ID_FIELD in permits.columns else len(permits),
         "permits_snapped": n_snapped,
         "permits_unmatched": len(permits) - n_snapped,
         "srs_fetched": len(sr_raw),
         "srs_null_geometry": sr_null,
         "srs_valid": len(srs),
         "srs_matched": n_sr_matched,
+        "srs_distinct_locations_matched": int(enriched["DISTINCT_SR_LOCATIONS"].sum()),
+        "sr_status_counts": "; ".join(f"{k} {v}" for k, v in srs["STATUS"].value_counts().items())
+        if "STATUS" in srs.columns else "",
         "srs_unmatched": len(srs) - n_sr_matched,
         "subblocks_with_permits": int((enriched["PERMIT_COUNT"] > 0).sum()),
         "subblocks_with_srs": int((enriched["SR_COUNT"] > 0).sum()),

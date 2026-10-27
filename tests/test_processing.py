@@ -233,7 +233,7 @@ def _v2_fixture(process):
         sb, 150, 1.0, snap=True)
     srs = process.match_to_subblocks(
         _points([("S1", "2025-11-01", (700, 20)), ("S2", "2025-12-01", (5030, 500))],
-                "INITIATEDDATE").rename(columns={"ID": "CSRNUMBER"}),
+                "INITIATEDDATE").rename(columns={"ID": "REQUESTID"}),
         sb, 150, 1.0, snap=False)
     return sb, permits, srs, process.enrich_subblocks(sb, permits, srs)
 
@@ -270,10 +270,10 @@ def test_connector_lines(process):
     assert list(qa_p.geometry.iloc[0].coords) == [(100, 40), (100, 0)]
     assert list(qa_p["LENGTH_FT"]) == list(qa_p["NEAR_DIST_FT"])
 
-    qa_s = process.connector_lines(srs, sb, ["CSRNUMBER"], 1.0)
+    qa_s = process.connector_lines(srs, sb, ["REQUESTID"], 1.0)
     assert list(qa_s.geometry.iloc[1].coords) == [(5030, 500), (5000, 500)]
 
-    empty = process.connector_lines(srs.iloc[0:0], sb, ["CSRNUMBER"], 1.0)
+    empty = process.connector_lines(srs.iloc[0:0], sb, ["REQUESTID"], 1.0)
     assert empty.empty and "LENGTH_FT" in empty.columns
 
 
@@ -283,7 +283,8 @@ def test_insight_tables(process):
     assert list(top["SUBBLOCK_UID"]) == ["B"] and top["ACTIVITY_SCORE"].iloc[0] == 2
 
     ward = process.ward_summary(enriched).set_index("WARD")
-    assert ward.loc["2", "PERMITS"] == 2 and ward.loc["6", "OPEN_SRS"] == 1
+    assert ward.loc["2", "PERMIT_LOCATIONS"] == 2 and ward.loc["6", "OPEN_SRS"] == 1
+    assert ward.loc["2", "DISTINCT_PERMITS"] == 2
 
     act = process.activity_summary(enriched, 1.0)
     assert list(act["ACTIVITY_CLASS"]) == ["Permit + SR", "Permit only", "SR only"]
@@ -293,9 +294,94 @@ def test_insight_tables(process):
 def test_top_conflicts_ranking(process):
     sb, _, _, enriched = _v2_fixture(process)
     e = enriched.copy()
-    e["PERMIT_COUNT"] = [3, 1, 1]
+    e["PERMIT_COUNT"] = [9, 1, 1]  # A: many address rows, but only 3 distinct permits
+    e["DISTINCT_PERMIT_COUNT"] = [3, 1, 1]
     e["SR_COUNT"] = [1, 3, 1]
+    e["DISTINCT_SR_LOCATIONS"] = [1, 3, 1]
     e["FLAG_BOTH_PERMIT_AND_SR"] = 1
     top = process.top_conflicts(e)
     assert list(top["SUBBLOCK_UID"]) == ["B", "A", "C"]  # tie on score broken by SR_COUNT
     assert list(top["RANK"]) == [1, 2, 3]
+
+
+def test_multi_address_permits_counted_once(process):
+    """TOPS stores one row per work-location address; distinct counts must collapse them."""
+    sb, _, srs, _ = _v2_fixture(process)
+    # M1 has three addresses: two on subblock A, one on subblock B (same block BLK1).
+    rows = [("M1", "2026-01-01", (100, 10)), ("M1", "2026-01-01", (200, 10)),
+            ("M1", "2026-01-01", (700, 10)), ("P9", "2026-02-01", (800, 10))]
+    permits = process.match_to_subblocks(
+        _points(rows, "ExpirationDate").rename(columns={"ID": "PermitNumber"}), sb, 150, 1.0, snap=True)
+    enriched = process.enrich_subblocks(sb, permits, srs)
+    e = enriched.set_index("SUBBLOCK_UID")
+    assert (e.loc["A", "PERMIT_COUNT"], e.loc["A", "DISTINCT_PERMIT_COUNT"]) == (2, 1)
+    assert (e.loc["B", "PERMIT_COUNT"], e.loc["B", "DISTINCT_PERMIT_COUNT"]) == (2, 2)
+    assert e.loc["C", "DISTINCT_PERMIT_COUNT"] == 0
+
+    blocks = process.aggregate_blocks(enriched, 1.0, permits).set_index("BLOCK_UID")
+    assert blocks.loc["BLK1", "PERMIT_COUNT"] == 4
+    assert blocks.loc["BLK1", "DISTINCT_PERMIT_COUNT"] == 2  # M1 spans A and B but counts once
+    assert blocks.loc["SB:C", "DISTINCT_PERMIT_COUNT"] == 0
+    # Without the permit rows the block falls back to the subblock sum (upper bound).
+    assert process.aggregate_blocks(enriched, 1.0).set_index("BLOCK_UID").loc["BLK1", "DISTINCT_PERMIT_COUNT"] == 3
+
+    ward = process.ward_summary(enriched, permits).set_index("WARD")
+    assert (ward.loc["2", "PERMIT_LOCATIONS"], ward.loc["2", "DISTINCT_PERMITS"]) == (4, 2)
+
+    top = process.top_conflicts(enriched)
+    assert list(top["SUBBLOCK_UID"]) == ["B"]
+    assert top["ACTIVITY_SCORE"].iloc[0] == 3  # 2 distinct permits + 1 SR
+
+
+def test_distinct_falls_back_to_rows_without_permit_id(process):
+    sb, permits, srs, _ = _v2_fixture(process)
+    e = process.enrich_subblocks(sb, permits.drop(columns="PermitNumber"), srs)
+    assert (e["DISTINCT_PERMIT_COUNT"] == e["PERMIT_COUNT"]).all()
+
+
+def test_repeat_sr_reports_at_one_location_counted_once(process):
+    """Block-range SR addresses geocode to one point; the ranking must not reward repeats."""
+    sb, permits, _, _ = _v2_fixture(process)
+    rows = [(f"S{i}", "2026-04-08", (700, 20)) for i in range(4)]  # four reports, same point on B
+    rows += [("T1", "2026-05-01", (100, 20)), ("T2", "2026-05-02", (300, 20))]  # two places on A
+    srs = process.match_to_subblocks(
+        _points(rows, "INITIATEDDATE").rename(columns={"ID": "REQUESTID"}), sb, 150, 1.0, snap=False)
+    enriched = process.enrich_subblocks(sb, permits, srs)
+    e = enriched.set_index("SUBBLOCK_UID")
+    assert (e.loc["B", "SR_COUNT"], e.loc["B", "DISTINCT_SR_LOCATIONS"]) == (4, 1)
+    assert (e.loc["A", "SR_COUNT"], e.loc["A", "DISTINCT_SR_LOCATIONS"]) == (2, 2)
+
+    top = process.top_conflicts(enriched)
+    assert list(top["SUBBLOCK_UID"]) == ["A", "B"]  # 1 permit + 2 places beats 1 permit + 4 repeats
+    assert list(top["ACTIVITY_SCORE"]) == [3, 2]
+
+    blocks = process.aggregate_blocks(enriched, 1.0, permits).set_index("BLOCK_UID")
+    assert (blocks.loc["BLK1", "SR_COUNT"], blocks.loc["BLK1", "DISTINCT_SR_LOCATIONS"]) == (6, 3)
+    ward = process.ward_summary(enriched, permits).set_index("WARD")
+    assert (ward.loc["2", "OPEN_SRS"], ward.loc["2", "DISTINCT_SR_LOCATIONS"]) == (6, 3)
+
+
+def test_enrich_date_windows(process):
+    """Earliest permit start / latest permit end, and oldest / newest open SR, per subblock and block."""
+    sb, _, _, _ = _v2_fixture(process)
+    raw = _points([("P1", "2026-06-30", (100, 10)), ("P2", "2026-03-31", (200, 10))], "ExpirationDate")
+    raw["EffectiveDate"] = pd.to_datetime(["2026-02-01", "2026-01-15"], utc=True)
+    permits = process.match_to_subblocks(raw.rename(columns={"ID": "PermitNumber"}), sb, 150, 1.0, snap=True)
+    srs = process.match_to_subblocks(
+        _points([("S1", "2025-11-01", (300, 20)), ("S2", "2026-04-01", (400, 20)),
+                 ("S3", "2025-12-01", (700, 20))], "INITIATEDDATE").rename(columns={"ID": "REQUESTID"}),
+        sb, 150, 1.0, snap=False)
+    enriched = process.enrich_subblocks(sb, permits, srs)
+    a = enriched.set_index("SUBBLOCK_UID").loc["A"]
+    assert a.MIN_PERMIT_EFF_DATE == pd.Timestamp("2026-01-15", tz="UTC")
+    assert a.MAX_PERMIT_EXP_DATE == pd.Timestamp("2026-06-30", tz="UTC")
+    assert a.MIN_SR_INIT_DATE == pd.Timestamp("2025-11-01", tz="UTC")
+    assert a.MAX_SR_INIT_DATE == pd.Timestamp("2026-04-01", tz="UTC")
+    assert pd.isna(enriched.set_index("SUBBLOCK_UID").loc["B", "MIN_PERMIT_EFF_DATE"])
+
+    blk = process.aggregate_blocks(enriched, 1.0, permits).set_index("BLOCK_UID").loc["BLK1"]
+    assert blk.MIN_SR_INIT_DATE == pd.Timestamp("2025-11-01", tz="UTC")
+    assert blk.MIN_PERMIT_EFF_DATE == pd.Timestamp("2026-01-15", tz="UTC")
+
+    top = process.top_conflicts(enriched)
+    assert {"MIN_PERMIT_EFF_DATE", "MIN_SR_INIT_DATE"} <= set(top.columns)

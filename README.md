@@ -86,9 +86,14 @@ The executed queries are also recorded per run in the `geoprocessing_history` ta
 3. **Service request assignment** - open SRs are assigned to the nearest qualifying subblock within
    150 ft (geometry unchanged).
 4. **Subblock enrichment** - per subblock:
-   * `PERMIT_COUNT` - snapped permits on the subblock
+   * `PERMIT_COUNT` - snapped permit work-location records on the subblock (TOPS stores one row per
+     address of a permit, so a multi-address permit contributes several)
+   * `DISTINCT_PERMIT_COUNT` - unique permits (`PermitNumber`) on the subblock
+   * `MIN_PERMIT_EFF_DATE` - earliest permit effective (start) date
    * `MAX_PERMIT_EXP_DATE` - latest permit expiration date
    * `SR_COUNT` - open service requests on the subblock
+   * `DISTINCT_SR_LOCATIONS` - unique SR locations (repeat reports geocoded to one point count once)
+   * `MIN_SR_INIT_DATE` - oldest open SR initiation date
    * `MAX_SR_INIT_DATE` - latest SR initiation date
    * `FLAG_BOTH_PERMIT_AND_SR` - 1 if `PERMIT_COUNT > 0` and `SR_COUNT > 0`, else 0
 5. **Block roll-up** - enriched subblocks are dissolved by `BLOCKID` (line-merged). Subblocks with
@@ -117,9 +122,13 @@ Derived fields:
 | --- | --- | --- |
 | `SUBBLOCK_UID` | Text | Unique subblock identifier (`SUBBLOCKKEY`; falls back to `OID-<OBJECTID>` if blank). |
 | `ROADWAY_TYPE` | Text | Decoded road classification: `STREET`, `SERVICE LANE`, or `RAMP`. |
-| `PERMIT_COUNT` | Integer | Count of filtered excavation/paving renewal permits snapped to the subblock. |
+| `PERMIT_COUNT` | Integer | Count of filtered excavation/paving renewal permit work-location records (one per address) snapped to the subblock. |
+| `DISTINCT_PERMIT_COUNT` | Integer | Count of unique permits (`PermitNumber`) among those records. |
+| `MIN_PERMIT_EFF_DATE` | DateTime (UTC) | Earliest effective (start) date among those permits; null when `PERMIT_COUNT = 0`. |
 | `MAX_PERMIT_EXP_DATE` | DateTime (UTC) | Latest expiration date among those permits; null when `PERMIT_COUNT = 0`. |
 | `SR_COUNT` | Integer | Count of open roadway repair / pothole / paving service requests on the subblock. |
+| `DISTINCT_SR_LOCATIONS` | Integer | Unique locations among those requests (rounded to 1 ft); repeat reports at one point count once. |
+| `MIN_SR_INIT_DATE` | DateTime (UTC) | Oldest initiation date among those requests (how long the defect has waited); null when `SR_COUNT = 0`. |
 | `MAX_SR_INIT_DATE` | DateTime (UTC) | Latest initiation date among those requests; null when `SR_COUNT = 0`. |
 | `FLAG_BOTH_PERMIT_AND_SR` | Integer | 1 = both permits and open service requests present; 0 otherwise. |
 | `ACTIVITY_CLASS` | Text | `Permit + SR`, `Permit only`, `SR only`, or `No activity` (drives map styling). |
@@ -138,7 +147,7 @@ All published TOPS permit attributes (e.g. `PermitNumber`, `StatusDescription`, 
 
 ### `service_requests_filtered` (Point, EPSG:2248)
 
-All published Cityworks attributes (e.g. `CSRNUMBER`, `DESCRIPTION`, `STATUS`, `INITIATEDDATE`,
+All published Cityworks attributes (e.g. `REQUESTID`, `DESCRIPTION`, `STATUS`, `INITIATEDDATE`,
 `ADDRESS`, `WARD`) plus `SUBBLOCK_UID` and `NEAR_DIST_FT` as above (geometry not moved).
 
 ### `roadway_block_enriched` (MultiLineString, EPSG:2248)
@@ -149,7 +158,9 @@ All published Cityworks attributes (e.g. `CSRNUMBER`, `DESCRIPTION`, `STATUS`, `
 | `BLOCKID`, `BLOCKKEY`, `ROUTENAME`, `STREETNAME`, `ROADWAY_TYPE` | Text | From the block's subblocks (constant within a block). |
 | `WARD_ID` | Text | Most common ward among the block's subblocks (28 blocks span two wards). |
 | `SUBBLOCK_COUNT` | Integer | Subblocks in the block. |
-| `PERMIT_COUNT`, `SR_COUNT` | Integer | Sums over the block's subblocks. |
+| `PERMIT_COUNT`, `SR_COUNT`, `DISTINCT_SR_LOCATIONS` | Integer | Sums over the block's subblocks. |
+| `DISTINCT_PERMIT_COUNT` | Integer | Unique permits on the block (a permit spanning several of its subblocks counts once). |
+| `MIN_PERMIT_EFF_DATE`, `MIN_SR_INIT_DATE` | DateTime (UTC) | Earliest dates over the block. |
 | `MAX_PERMIT_EXP_DATE`, `MAX_SR_INIT_DATE` | DateTime (UTC) | Latest dates over the block. |
 | `SUBBLOCKS_WITH_BOTH` | Integer | Subblocks in the block whose own `FLAG_BOTH_PERMIT_AND_SR = 1`. |
 | `FLAG_BOTH_PERMIT_AND_SR` | Integer | 1 = the block has permits **and** open SRs, possibly on different subblocks. |
@@ -162,20 +173,20 @@ All published Cityworks attributes (e.g. `CSRNUMBER`, `DESCRIPTION`, `STATUS`, `
 | --- | --- | --- |
 | `permits_original` | Point | All `permits_snapped` attributes, at the source location from the REST service. |
 | `qa_permit_snap_displacement` | LineString | `PermitNumber`, `SUBBLOCK_UID`, `NEAR_DIST_FT`, `LENGTH_FT` (= displacement). One line per snapped permit. |
-| `qa_sr_subblock_assignment` | LineString | `CSRNUMBER`, `DESCRIPTION`, `SUBBLOCK_UID`, `NEAR_DIST_FT`, `LENGTH_FT`. One line per matched SR. |
+| `qa_sr_subblock_assignment` | LineString | `REQUESTID`, `DESCRIPTION`, `STATUS`, `SUBBLOCK_UID`, `NEAR_DIST_FT`, `LENGTH_FT`. One line per matched SR. |
 
 ### Insight tables (snapshot of the latest run)
 
 | Table | Contents |
 | --- | --- |
-| `insight_top_conflicts` | Every dual-conflict subblock: `RANK`, identifiers, street, ward, `BLOCKID`, counts, latest dates, `ACTIVITY_SCORE` (= permits + SRs; ties broken by SR count). |
-| `insight_ward_summary` | Per ward: `SUBBLOCKS`, `SUBBLOCKS_WITH_PERMITS`, `SUBBLOCKS_WITH_SRS`, `DUAL_CONFLICT_SUBBLOCKS`, `PERMITS`, `OPEN_SRS`. |
+| `insight_top_conflicts` | Every dual-conflict subblock: `RANK`, identifiers, street, ward, `BLOCKID`, counts, latest dates, `DISTINCT_PERMIT_COUNT`, `PERMIT_COUNT`, `DISTINCT_SR_LOCATIONS`, `SR_COUNT`, `ACTIVITY_SCORE` (= distinct permits + distinct SR locations; ties broken by distinct SR locations, SR count, distinct permits, then permit records). |
+| `insight_ward_summary` | Per ward: `SUBBLOCKS`, `SUBBLOCKS_WITH_PERMITS`, `SUBBLOCKS_WITH_SRS`, `DUAL_CONFLICT_SUBBLOCKS`, `DISTINCT_PERMITS`, `PERMIT_LOCATIONS` (records), `OPEN_SRS`, `DISTINCT_SR_LOCATIONS`. |
 | `insight_activity_summary` | Per `ACTIVITY_CLASS` × `ROADWAY_TYPE`: `SUBBLOCKS`, `CENTERLINE_MILES`. |
 
 ### `geoprocessing_history` (attribute table)
 
 One row per run: `run_id`, `run_started_utc`, `run_finished_utc`, `duration_s`, `script_version`,
-`target_crs`, `snap_tolerance_ft`, fetched/valid/matched/unmatched counts for each source,
+`target_crs`, `snap_tolerance_ft`, fetched/valid/matched/unmatched counts for each source, `permits_distinct`, `srs_distinct_locations_matched`, `sr_status_counts`,
 `subblocks_with_permits`, `subblocks_with_srs`, `dual_conflict_subblocks`, `blocks_written`,
 `dual_conflict_blocks`, `subblocks_without_blockid`, permit snap displacement median / 95th percentile /
 max (ft), source URLs, and the exact definition queries executed.
@@ -185,14 +196,15 @@ max (ft), source URLs, and the exact definition queries executed.
 | Group | Layer | Default | Styling |
 | --- | --- | --- | --- |
 | Analysis (local GeoPackage) | Subblocks with BOTH permits and open SRs | on | Red line on a yellow halo (`FLAG_BOTH_PERMIT_AND_SR = 1`) |
-| | Permits - snapped to roadway subblock | on | Magenta circles |
+| | Permits - snapped to roadway subblock | on | Magenta circles (`SNAPPED = 1` only) |
 | | Service requests - open roadway/pothole/paving | on | Purple triangles |
 | | Roadway subblock - enriched | on | Categorised by `ACTIVITY_CLASS` |
 | | Roadway block (BLOCKID) - enriched | off | Categorised by `ACTIVITY_CLASS`, wider lines |
 | Source - live DC GIS REST services (filtered) | REST - Construction permits (DDOT TOPS) | off | Hollow blue squares |
 | | REST - Cityworks service requests | off | Hollow red triangles |
 | | REST - Roadway SubBlock | off | Dashed grey line |
-| QA - snapping & original locations | QA - permit snap displacement (original -> snapped) | off | Pink lines |
+| QA - snapping & original locations | Permits - NOT snapped (> tolerance, original location) | off | Orange diamonds (`SNAPPED = 0`) |
+| | QA - permit snap displacement (original -> snapped) | off | Pink lines |
 | | QA - SR to subblock assignment | off | Dashed orange lines |
 | | Permits - original source location (unsnapped) | off | Grey × |
 | Insights & geoprocessing history (tables) | 3 insight tables + geoprocessing history | - | Attribute tables |
@@ -223,6 +235,12 @@ The script exits non-zero on failure and logs to `logs/geoprocessing_history.log
 * The 150 ft tolerance can assign a point at an intersection to a cross street. `NEAR_DIST_FT` and
   `ORIG_X`/`ORIG_Y` support review of borderline cases.
 * SRs on alleys or driveways are excluded by design because those road types are filtered out.
+* "Open" SRs exclude only `CLOSED`, `CANCEL` and `COMPLETE`, so `INSPCOMP` (inspection complete,
+  about 40% of the current set) is included. Confirm this definition with the requester.
+* `CSRNUMBER` is published but empty on every service request; `REQUESTID` is the identifier used.
+* The permits service appears to publish current permits only (earliest expiration = run date), so the
+  `ExpirationDate >= 2025-10-01` clause does not reduce the set. About 45% of permits expire within
+  30 days, so re-run frequently.
 * Dates are stored in UTC; the summary report presents them in America/New_York.
 
 ## 9. Tests

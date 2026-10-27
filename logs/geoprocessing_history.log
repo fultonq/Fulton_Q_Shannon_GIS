@@ -28,3 +28,48 @@
 [2026-10-14 11:17:32] INFO    [5/5] Writing data/ddot_maintenance_operations.gpkg
 [2026-10-14 11:17:34] INFO    Wrote Project_Summary_Report.md
 [2026-10-14 11:17:34] INFO    Run a8a3aaba-0ad9-4544-8479-7e609b4d19a6 complete in 29.7 s
+[2026-10-26 18:54:18] INFO    ========================================================================
+[2026-10-26 18:54:18] INFO    DDOT GIS pipeline v2.1.0 - run started
+[2026-10-26 18:54:18] INFO    Target CRS EPSG:2248 (NAD83 / Maryland (ftUS)); snap tolerance 150.0 ft
+[2026-10-26 18:54:18] INFO    [1/5] Extracting from DC GIS REST services
+[2026-10-26 18:54:36] INFO      Roadway SubBlock: 23104 matching features (24 request(s))
+[2026-10-26 18:55:09] INFO      DDOT - Public Space Construction Permits - Status: 9341 matching features (10 request(s))
+[2026-10-26 18:55:16] INFO      CityworksRequest: 666 matching features (1 request(s))
+[2026-10-26 18:55:16] INFO    [2/5] Cleaning and reprojecting to EPSG:2248
+[2026-10-26 18:55:16] INFO    [3/5] Snapping 9341 permits to subblock centerlines
+[2026-10-26 18:55:16] INFO      permits snapped: 9286 / 9341; service requests matched: 649 / 666
+[2026-10-26 18:55:16] INFO    [4/5] Enriching subblocks, aggregating blocks, building QA layers and insights
+[2026-10-26 18:55:19] INFO      dual-conflict subblocks: 96; blocks: 14541 (dual-conflict 134)
+[2026-10-26 18:55:19] INFO    [5/5] Writing data/ddot_maintenance_operations.gpkg
+[2026-10-26 18:55:22] INFO    Wrote Project_Summary_Report.md
+[2026-10-26 18:55:22] INFO    Run a8ca743c-ef58-40f9-b564-effe4442ddf4 complete in 61.8 s
+[2026-10-26 19:53:55] INFO    ========================================================================
+[2026-10-26 19:53:55] INFO    DDOT GIS pipeline v2.2.0 - run started
+[2026-10-26 19:53:55] INFO    Target CRS EPSG:2248 (NAD83 / Maryland (ftUS)); snap tolerance 150.0 ft
+[2026-10-26 19:53:55] INFO    [1/5] Extracting from DC GIS REST services
+[2026-10-26 19:53:55] INFO      Roadway SubBlock: 23104 matching features (24 request(s))
+[2026-10-26 19:54:15] INFO      DDOT - Public Space Construction Permits - Status: 9341 matching features (10 request(s))
+[2026-10-26 19:54:21] INFO      CityworksRequest: 666 matching features (1 request(s))
+[2026-10-26 19:54:21] INFO    [2/5] Cleaning and reprojecting to EPSG:2248
+[2026-10-26 19:54:21] INFO    [3/5] Snapping 9341 permits to subblock centerlines
+[2026-10-26 19:54:21] INFO      permits snapped: 9286 / 9341; service requests matched: 649 / 666
+[2026-10-26 19:54:21] INFO    [4/5] Enriching subblocks, aggregating blocks, building QA layers and insights
+[2026-10-26 19:54:24] INFO      dual-conflict subblocks: 96; blocks: 14541 (dual-conflict 134)
+[2026-10-26 19:54:24] INFO    [5/5] Writing data/ddot_maintenance_operations.gpkg
+[2026-10-26 19:54:27] INFO    Wrote Project_Summary_Report.md
+[2026-10-26 19:54:27] INFO    Run 670d87f6-c554-4f8d-86ea-df7d139ae6db complete in 29.6 s
+[2026-10-26 21:43:37] INFO    ========================================================================
+[2026-10-26 21:43:37] INFO    DDOT GIS pipeline v2.3.0 - run started
+[2026-10-26 21:43:37] INFO    Target CRS EPSG:2248 (NAD83 / Maryland (ftUS)); snap tolerance 150.0 ft
+[2026-10-26 21:43:37] INFO    [1/5] Extracting from DC GIS REST services
+[2026-10-26 21:43:38] INFO      Roadway SubBlock: 23104 matching features (24 request(s))
+[2026-10-26 21:43:57] INFO      DDOT - Public Space Construction Permits - Status: 9341 matching features (10 request(s))
+[2026-10-26 21:44:03] INFO      CityworksRequest: 666 matching features (1 request(s))
+[2026-10-26 21:44:04] INFO    [2/5] Cleaning and reprojecting to EPSG:2248
+[2026-10-26 21:44:04] INFO    [3/5] Snapping 9341 permits to subblock centerlines
+[2026-10-26 21:44:04] INFO      permits snapped: 9286 / 9341; service requests matched: 649 / 666
+[2026-10-26 21:44:04] INFO    [4/5] Enriching subblocks, aggregating blocks, building QA layers and insights
+[2026-10-26 21:44:07] INFO      dual-conflict subblocks: 96; blocks: 14541 (dual-conflict 134)
+[2026-10-26 21:44:07] INFO    [5/5] Writing data/ddot_maintenance_operations.gpkg
+[2026-10-26 21:44:10] INFO    Wrote Project_Summary_Report.md
+[2026-10-26 21:44:10] INFO    Run e4c1488c-8a9a-4daa-82f4-b85d693a57ee complete in 28.9 s
