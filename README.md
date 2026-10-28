@@ -18,6 +18,10 @@ Deliverables:
 * QA layers that show every snap and assignment as a line from the source location.
 * A QGIS project (`ddot_maintenance_operations.qgz`) with the local processed layers and the
   filtered live DC GIS REST feeds.
+* One shapefile per filter / question in the data request (`shapefiles/`), for use outside the
+  project or in ArcGIS, with a field crosswalk back to the GeoPackage.
+* `QGIS_Dashboard_Guide.md` - step-by-step instructions for building an interactive and a printable
+  dashboard in QGIS from those shapefiles.
 * A geoprocessing log, a per-run history table, the automated Python processing script, and this documentation.
 
 Results for the current run are summarised in **`Project_Summary_Report.md`**.
@@ -30,6 +34,7 @@ Fulton_Q_Shannon_GIS_V2/
 ├── Project_Summary_Report.md          # Executive report generated from the latest run
 ├── 01_pull_and_process_data.py        # REST extraction, snapping, enrichment, GeoPackage + report
 ├── ddot_maintenance_operations.qgz    # QGIS project (relative paths - open directly after unzipping)
+├── QGIS_Dashboard_Guide.md            # Step-by-step: build a QGIS dashboard from shapefiles/
 ├── data/
 │   └── ddot_maintenance_operations.gpkg
 │       ├── roadway_subblock_enriched    # Enriched roadway centerlines (MultiLineString)
@@ -43,6 +48,14 @@ Fulton_Q_Shannon_GIS_V2/
 │       ├── insight_ward_summary         # Activity by ward (table)
 │       ├── insight_activity_summary     # Activity class x roadway type, with miles (table)
 │       └── geoprocessing_history        # One row per pipeline run: parameters, queries, audit counts
+├── shapefiles/                        # One shapefile per PDF filter / question (EPSG:2248)
+│   ├── permits_filtered_snapped.shp       # Permit filter, snapped to the roadway
+│   ├── roadway_subblock_filtered.shp      # Subblock filter (street / service lane / ramp), enriched
+│   ├── service_requests_filtered.shp      # Cityworks SR filter
+│   ├── subblocks_with_permits.shp         # PRMT_CNT > 0: permit count + latest expiration
+│   ├── subblocks_with_open_srs.shp        # SR_CNT > 0: SR count + latest initiation
+│   ├── subblocks_with_permits_and_srs.shp # FLAG_BOTH = 1
+│   └── field_crosswalk.csv                # Shapefile field -> GeoPackage field, filter, PDF item
 └── logs/
     └── geoprocessing_history.log      # Timestamped execution log (appended on every run)
 ```
@@ -104,8 +117,10 @@ The executed queries are also recorded per run in the `geoprocessing_history` ta
 7. **Output** - layers, insight tables and a run-history row are written to `ddot_maintenance_operations.gpkg`
    atomically (temp file + rename; prior run history is carried forward), and
    `Project_Summary_Report.md` is regenerated.
-8. **QGIS project** - `ddot_maintenance_operations.qgz` (QGIS 3.40 LTR) references the GeoPackage
-   layers by relative path, so the project opens anywhere once the folder is unzipped.
+8. **Shapefile exports** - the GeoPackage layers are exported to `shapefiles/`, one file per filter or
+   question in the request (see 5. Data Dictionary, *Shapefile exports*).
+9. **QGIS project** - `ddot_maintenance_operations.qgz` (QGIS 3.40 LTR) references the GeoPackage
+   layers and shapefiles by relative path, so the project opens anywhere once the folder is unzipped.
 
 Equidistant ties are resolved deterministically (first match). Metrics are attributed per subblock
 feature, so duplicate subblock keys (none in the current data) cannot double-count.
@@ -191,6 +206,26 @@ One row per run: `run_id`, `run_started_utc`, `run_finished_utc`, `duration_s`, 
 `dual_conflict_blocks`, `subblocks_without_blockid`, permit snap displacement median / 95th percentile /
 max (ft), source URLs, and the exact definition queries executed.
 
+### Shapefile exports (`shapefiles/`, EPSG:2248)
+
+One shapefile per filter or question in the data request. They hold the same features as the
+GeoPackage layers but carry a curated field set: shapefile field names are limited to 10 characters,
+and dates are stored as dates (the UTC calendar day, without the time). The GeoPackage keeps every
+source attribute and full timestamps; `field_crosswalk.csv` maps each shapefile field back to it.
+
+| Shapefile | Source layer | Filter | Answers |
+| --- | --- | --- | --- |
+| `permits_filtered_snapped` | `permits_snapped` | all | Construction permit filter, snapped to the roadway (`SNAPPED` = 0 rows keep their original location) |
+| `roadway_subblock_filtered` | `roadway_subblock_enriched` | all | Roadway subblock filter, enriched |
+| `service_requests_filtered` | `service_requests_filtered` | all | Cityworks service request filter |
+| `subblocks_with_permits` | `roadway_subblock_enriched` | `PERMIT_COUNT > 0` | Blocks with a permit count; latest expiration date |
+| `subblocks_with_open_srs` | `roadway_subblock_enriched` | `SR_COUNT > 0` | Blocks with an open SR count; latest creation date |
+| `subblocks_with_permits_and_srs` | `roadway_subblock_enriched` | `FLAG_BOTH_PERMIT_AND_SR = 1` | Blocks with both |
+
+Key subblock fields: `SUBBLK_UID` (`SUBBLOCK_UID`), `PRMT_CNT` (`PERMIT_COUNT`), `PRMT_DIST`
+(`DISTINCT_PERMIT_COUNT`), `PRMT_EXPMX` (`MAX_PERMIT_EXP_DATE`), `SR_CNT` (`SR_COUNT`), `SR_INITMX`
+(`MAX_SR_INIT_DATE`), `FLAG_BOTH` (`FLAG_BOTH_PERMIT_AND_SR`), `ACTIVITY` (`ACTIVITY_CLASS`).
+
 ## 6. QGIS Project Contents
 
 | Group | Layer | Default | Styling |
@@ -200,6 +235,7 @@ max (ft), source URLs, and the exact definition queries executed.
 | | Service requests - open roadway/pothole/paving | on | Purple triangles |
 | | Roadway subblock - enriched | on | Categorised by `ACTIVITY_CLASS` |
 | | Roadway block (BLOCKID) - enriched | off | Categorised by `ACTIVITY_CLASS`, wider lines |
+| Shapefile exports (one per PDF filter / question) | The six `shapefiles/*.shp` layers | off | Same styling as the matching Analysis layer |
 | Source - live DC GIS REST services (filtered) | REST - Construction permits (DDOT TOPS) | off | Hollow blue squares |
 | | REST - Cityworks service requests | off | Hollow red triangles |
 | | REST - Roadway SubBlock | off | Dashed grey line |
@@ -227,7 +263,8 @@ python 01_pull_and_process_data.py
 ```
 
 The script exits non-zero on failure and logs to `logs/geoprocessing_history.log`. Re-opening
-`ddot_maintenance_operations.qgz` afterwards shows the refreshed layers.
+`ddot_maintenance_operations.qgz` afterwards shows the refreshed GeoPackage layers. The shapefiles
+are a static export: they are regenerated when the project is rebuilt, not by this script.
 
 ## 8. Limitations
 
@@ -235,8 +272,12 @@ The script exits non-zero on failure and logs to `logs/geoprocessing_history.log
 * The 150 ft tolerance can assign a point at an intersection to a cross street. `NEAR_DIST_FT` and
   `ORIG_X`/`ORIG_Y` support review of borderline cases.
 * SRs on alleys or driveways are excluded by design because those road types are filtered out.
-* "Open" SRs exclude only `CLOSED`, `CANCEL` and `COMPLETE`, so `INSPCOMP` (inspection complete,
-  about 40% of the current set) is included. Confirm this definition with the requester.
+* "Open" SRs use the supplied SQL (`STATUS NOT IN ('CLOSED', 'CANCEL', 'COMPLETE')`). That keeps
+  `OPEN`, `PENDING` and `INSPCOMP` (inspection completed), as the request asks, and also admits the odd
+  status outside that list (currently one `GEO ISSUE`); the report counts these.
+* Permits sited on an alley or driveway within the tolerance of a street are snapped onto that street
+  and counted on it. `ON_EXCLUDED_ROADWAY` / `SOURCE_ROADWAY_TYPE` on `permits_snapped` and
+  `EXCLUDED_ROADWAY_PERMIT_COUNT` on the subblocks identify them; whether they should count is open.
 * `CSRNUMBER` is published but empty on every service request; `REQUESTID` is the identifier used.
 * The permits service appears to publish current permits only (earliest expiration = run date), so the
   `ExpirationDate >= 2025-10-01` clause does not reduce the set. About 45% of permits expire within

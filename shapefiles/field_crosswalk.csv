@@ -1,0 +1,124 @@
+shapefile,shp_field,gpkg_layer,gpkg_field,type,filter,answers
+permits_filtered_snapped.shp,PERMIT_NO,permits_snapped,PermitNumber,String,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,TRACK_NO,permits_snapped,TrackingNumber,Integer64,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,STATUS,permits_snapped,StatusDescription,String,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,RENEWAL,permits_snapped,RenewalDescription,String,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,PRMT_TYPE,permits_snapped,PermitTypeDescription,String,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,IS_EXCAV,permits_snapped,IsExcavation,Integer64,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,IS_PAVING,permits_snapped,IsPaving,Integer64,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,ISSUE_DATE,permits_snapped,IssueDate,DateTime,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,EFF_DATE,permits_snapped,EffectiveDate,DateTime,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,EXP_DATE,permits_snapped,ExpirationDate,DateTime,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,ADDRESS,permits_snapped,WorkLocationFullAddress,String,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,WARD,permits_snapped,Ward,String,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,SUBBLK_UID,permits_snapped,SUBBLOCK_UID,String,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,NEAR_FT,permits_snapped,NEAR_DIST_FT,Real,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,ORIG_X,permits_snapped,ORIG_X,Real,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,ORIG_Y,permits_snapped,ORIG_Y,Real,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,SNAPPED,permits_snapped,SNAPPED,Integer,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,SRC_RDTYPE,permits_snapped,SOURCE_ROADWAY_TYPE,String,,"Construction permit filter, snapped to the roadway"
+permits_filtered_snapped.shp,ON_EXCL_RD,permits_snapped,ON_EXCLUDED_ROADWAY,Integer,,"Construction permit filter, snapped to the roadway"
+roadway_subblock_filtered.shp,SUBBLK_UID,roadway_subblock_enriched,SUBBLOCK_UID,String,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,SUBBLK_ID,roadway_subblock_enriched,SUBBLOCKID,String,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,BLOCKID,roadway_subblock_enriched,BLOCKID,String,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,ROUTENAME,roadway_subblock_enriched,ROUTENAME,String,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,STREETNAME,roadway_subblock_enriched,STREETNAME,String,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,FROMSTREET,roadway_subblock_enriched,FROMSTREET,String,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,TOSTREET,roadway_subblock_enriched,TOSTREET,String,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,ROADTYPE,roadway_subblock_enriched,ROADTYPE,String,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,ROAD_CLASS,roadway_subblock_enriched,ROADWAY_TYPE,String,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,WARD_ID,roadway_subblock_enriched,WARD_ID,String,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,PCI_SCORE,roadway_subblock_enriched,PCI_SCORE,Real,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,LENGTH,roadway_subblock_enriched,LENGTH,Real,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,PRMT_CNT,roadway_subblock_enriched,PERMIT_COUNT,Integer,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,PRMT_DIST,roadway_subblock_enriched,DISTINCT_PERMIT_COUNT,Integer,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,PRMT_EFFMN,roadway_subblock_enriched,MIN_PERMIT_EFF_DATE,DateTime,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,PRMT_EXPMX,roadway_subblock_enriched,MAX_PERMIT_EXP_DATE,DateTime,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,PRMT_EXCL,roadway_subblock_enriched,EXCLUDED_ROADWAY_PERMIT_COUNT,Integer,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,SR_CNT,roadway_subblock_enriched,SR_COUNT,Integer,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,SR_LOC_CNT,roadway_subblock_enriched,DISTINCT_SR_LOCATIONS,Integer,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,SR_INITMN,roadway_subblock_enriched,MIN_SR_INIT_DATE,DateTime,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,SR_INITMX,roadway_subblock_enriched,MAX_SR_INIT_DATE,DateTime,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,FLAG_BOTH,roadway_subblock_enriched,FLAG_BOTH_PERMIT_AND_SR,Integer,,"Roadway subblock filter, enriched"
+roadway_subblock_filtered.shp,ACTIVITY,roadway_subblock_enriched,ACTIVITY_CLASS,String,,"Roadway subblock filter, enriched"
+service_requests_filtered.shp,REQUEST_ID,service_requests_filtered,REQUESTID,Integer64,,Cityworks service request filter
+service_requests_filtered.shp,CSR_NUMBER,service_requests_filtered,CSRNUMBER,String,,Cityworks service request filter
+service_requests_filtered.shp,WO_ID,service_requests_filtered,WORKORDERID,String,,Cityworks service request filter
+service_requests_filtered.shp,DESCRIPT,service_requests_filtered,DESCRIPTION,String,,Cityworks service request filter
+service_requests_filtered.shp,STATUS,service_requests_filtered,STATUS,String,,Cityworks service request filter
+service_requests_filtered.shp,PRIORITY,service_requests_filtered,PRIORITY,String,,Cityworks service request filter
+service_requests_filtered.shp,INIT_DATE,service_requests_filtered,INITIATEDDATE,DateTime,,Cityworks service request filter
+service_requests_filtered.shp,INSP_DONE,service_requests_filtered,INSPECTIONCOMPLETE,String,,Cityworks service request filter
+service_requests_filtered.shp,ADDRESS,service_requests_filtered,ADDRESS,String,,Cityworks service request filter
+service_requests_filtered.shp,WARD,service_requests_filtered,WARD,String,,Cityworks service request filter
+service_requests_filtered.shp,SUBBLK_UID,service_requests_filtered,SUBBLOCK_UID,String,,Cityworks service request filter
+service_requests_filtered.shp,NEAR_FT,service_requests_filtered,NEAR_DIST_FT,Real,,Cityworks service request filter
+subblocks_with_permits.shp,SUBBLK_UID,roadway_subblock_enriched,SUBBLOCK_UID,String,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,SUBBLK_ID,roadway_subblock_enriched,SUBBLOCKID,String,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,BLOCKID,roadway_subblock_enriched,BLOCKID,String,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,ROUTENAME,roadway_subblock_enriched,ROUTENAME,String,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,STREETNAME,roadway_subblock_enriched,STREETNAME,String,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,FROMSTREET,roadway_subblock_enriched,FROMSTREET,String,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,TOSTREET,roadway_subblock_enriched,TOSTREET,String,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,ROADTYPE,roadway_subblock_enriched,ROADTYPE,String,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,ROAD_CLASS,roadway_subblock_enriched,ROADWAY_TYPE,String,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,WARD_ID,roadway_subblock_enriched,WARD_ID,String,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,PCI_SCORE,roadway_subblock_enriched,PCI_SCORE,Real,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,LENGTH,roadway_subblock_enriched,LENGTH,Real,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,PRMT_CNT,roadway_subblock_enriched,PERMIT_COUNT,Integer,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,PRMT_DIST,roadway_subblock_enriched,DISTINCT_PERMIT_COUNT,Integer,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,PRMT_EFFMN,roadway_subblock_enriched,MIN_PERMIT_EFF_DATE,DateTime,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,PRMT_EXPMX,roadway_subblock_enriched,MAX_PERMIT_EXP_DATE,DateTime,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,PRMT_EXCL,roadway_subblock_enriched,EXCLUDED_ROADWAY_PERMIT_COUNT,Integer,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,SR_CNT,roadway_subblock_enriched,SR_COUNT,Integer,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,SR_LOC_CNT,roadway_subblock_enriched,DISTINCT_SR_LOCATIONS,Integer,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,SR_INITMN,roadway_subblock_enriched,MIN_SR_INIT_DATE,DateTime,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,SR_INITMX,roadway_subblock_enriched,MAX_SR_INIT_DATE,DateTime,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,FLAG_BOTH,roadway_subblock_enriched,FLAG_BOTH_PERMIT_AND_SR,Integer,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_permits.shp,ACTIVITY,roadway_subblock_enriched,ACTIVITY_CLASS,String,"""PERMIT_COUNT"" > 0",Blocks with a count of permits / latest permit expiration date
+subblocks_with_open_srs.shp,SUBBLK_UID,roadway_subblock_enriched,SUBBLOCK_UID,String,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,SUBBLK_ID,roadway_subblock_enriched,SUBBLOCKID,String,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,BLOCKID,roadway_subblock_enriched,BLOCKID,String,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,ROUTENAME,roadway_subblock_enriched,ROUTENAME,String,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,STREETNAME,roadway_subblock_enriched,STREETNAME,String,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,FROMSTREET,roadway_subblock_enriched,FROMSTREET,String,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,TOSTREET,roadway_subblock_enriched,TOSTREET,String,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,ROADTYPE,roadway_subblock_enriched,ROADTYPE,String,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,ROAD_CLASS,roadway_subblock_enriched,ROADWAY_TYPE,String,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,WARD_ID,roadway_subblock_enriched,WARD_ID,String,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,PCI_SCORE,roadway_subblock_enriched,PCI_SCORE,Real,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,LENGTH,roadway_subblock_enriched,LENGTH,Real,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,PRMT_CNT,roadway_subblock_enriched,PERMIT_COUNT,Integer,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,PRMT_DIST,roadway_subblock_enriched,DISTINCT_PERMIT_COUNT,Integer,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,PRMT_EFFMN,roadway_subblock_enriched,MIN_PERMIT_EFF_DATE,DateTime,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,PRMT_EXPMX,roadway_subblock_enriched,MAX_PERMIT_EXP_DATE,DateTime,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,PRMT_EXCL,roadway_subblock_enriched,EXCLUDED_ROADWAY_PERMIT_COUNT,Integer,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,SR_CNT,roadway_subblock_enriched,SR_COUNT,Integer,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,SR_LOC_CNT,roadway_subblock_enriched,DISTINCT_SR_LOCATIONS,Integer,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,SR_INITMN,roadway_subblock_enriched,MIN_SR_INIT_DATE,DateTime,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,SR_INITMX,roadway_subblock_enriched,MAX_SR_INIT_DATE,DateTime,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,FLAG_BOTH,roadway_subblock_enriched,FLAG_BOTH_PERMIT_AND_SR,Integer,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_open_srs.shp,ACTIVITY,roadway_subblock_enriched,ACTIVITY_CLASS,String,"""SR_COUNT"" > 0",Blocks with a count of open SRs / latest SR creation date
+subblocks_with_permits_and_srs.shp,SUBBLK_UID,roadway_subblock_enriched,SUBBLOCK_UID,String,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,SUBBLK_ID,roadway_subblock_enriched,SUBBLOCKID,String,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,BLOCKID,roadway_subblock_enriched,BLOCKID,String,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,ROUTENAME,roadway_subblock_enriched,ROUTENAME,String,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,STREETNAME,roadway_subblock_enriched,STREETNAME,String,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,FROMSTREET,roadway_subblock_enriched,FROMSTREET,String,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,TOSTREET,roadway_subblock_enriched,TOSTREET,String,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,ROADTYPE,roadway_subblock_enriched,ROADTYPE,String,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,ROAD_CLASS,roadway_subblock_enriched,ROADWAY_TYPE,String,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,WARD_ID,roadway_subblock_enriched,WARD_ID,String,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,PCI_SCORE,roadway_subblock_enriched,PCI_SCORE,Real,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,LENGTH,roadway_subblock_enriched,LENGTH,Real,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,PRMT_CNT,roadway_subblock_enriched,PERMIT_COUNT,Integer,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,PRMT_DIST,roadway_subblock_enriched,DISTINCT_PERMIT_COUNT,Integer,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,PRMT_EFFMN,roadway_subblock_enriched,MIN_PERMIT_EFF_DATE,DateTime,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,PRMT_EXPMX,roadway_subblock_enriched,MAX_PERMIT_EXP_DATE,DateTime,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,PRMT_EXCL,roadway_subblock_enriched,EXCLUDED_ROADWAY_PERMIT_COUNT,Integer,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,SR_CNT,roadway_subblock_enriched,SR_COUNT,Integer,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,SR_LOC_CNT,roadway_subblock_enriched,DISTINCT_SR_LOCATIONS,Integer,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,SR_INITMN,roadway_subblock_enriched,MIN_SR_INIT_DATE,DateTime,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,SR_INITMX,roadway_subblock_enriched,MAX_SR_INIT_DATE,DateTime,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,FLAG_BOTH,roadway_subblock_enriched,FLAG_BOTH_PERMIT_AND_SR,Integer,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests
+subblocks_with_permits_and_srs.shp,ACTIVITY,roadway_subblock_enriched,ACTIVITY_CLASS,String,"""FLAG_BOTH_PERMIT_AND_SR"" = 1",Blocks with these permits and open service requests

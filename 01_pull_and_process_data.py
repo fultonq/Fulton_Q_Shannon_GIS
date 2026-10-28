@@ -9,7 +9,8 @@ each subblock with permit / service-request metrics, and writes:
     data/ddot_maintenance_operations.gpkg
         roadway_subblock_enriched     (MultiLineString) subblock metrics + conflict flag
         roadway_block_enriched        (MultiLineString) subblocks aggregated by BLOCKID
-        permits_snapped               (Point)  permits moved onto centerlines
+        permits_snapped               (Point)  permits moved onto centerlines, tagged with the
+                                               road type their source location sits on
         service_requests_filtered     (Point)  open roadway SRs with subblock assignment
         permits_original              (Point)  permits at their source (unsnapped) location
         qa_permit_snap_displacement   (LineString) original -> snapped permit location
@@ -52,7 +53,7 @@ from pyproj import CRS
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-__version__ = "2.3.0"
+__version__ = "2.4.0"
 
 LOG = logging.getLogger("ddot_gis.process")
 
@@ -91,8 +92,12 @@ UID = "SUBBLOCK_UID"
 BLOCK_UID = "BLOCK_UID"
 SUBBLOCK_IDX = "_SUBBLOCK_IDX"  # internal row pointer, never written
 ACTIVITY_CLASSES = ("Permit + SR", "Permit only", "SR only", "No activity")
-# ROADTYPE coded domain -> ROADWAY_TYPE label (only the analysed classes).
-ROADWAY_TYPE_LABELS = {"1": "STREET", "2": "SERVICE LANE", "3": "RAMP"}
+# ROADTYPE coded domain -> ROADWAY_TYPE label. 1-3 are analysed; 4-8 are fetched only to
+# identify permits whose source location sits on an excluded road type.
+ROADWAY_TYPE_LABELS = {"1": "STREET", "2": "SERVICE LANE", "3": "RAMP", "4": "ALLEY", "5": "DRIVEWAY",
+                       "6": "TRAIL", "7": "WALKWAY", "8": "STREETCAR"}
+# Statuses the request names ("open, pending, or have a completed inspection").
+SR_REQUESTED_STATUSES = ("OPEN", "PENDING", "INSPCOMP")
 
 DEFAULT_CRS = "EPSG:2248"  # NAD83 / Maryland (ftUS)
 DEFAULT_TOLERANCE_FT = 150.0
@@ -146,6 +151,11 @@ def sql_timestamp(d: date) -> str:
 
 def subblock_where(f: Filters) -> str:
     return f"ROADTYPE IN {sql_list(f.road_types)}"
+
+
+def excluded_subblock_where(f: Filters) -> str:
+    """Complement of subblock_where (alleys, driveways, ...), used only to tag permit source locations."""
+    return f"ROADTYPE NOT IN {sql_list(f.road_types)} OR ROADTYPE IS NULL"
 
 
 def permit_where(f: Filters) -> str:
@@ -402,6 +412,9 @@ def enrich_subblocks(
     DISTINCT_PERMIT_COUNT counts unique ``permit_id_field`` values.
     DISTINCT_SR_LOCATIONS counts unique SR locations, so repeat reports
     geocoded to the same point (e.g. a block-range address) count once.
+    EXCLUDED_ROADWAY_PERMIT_COUNT (when permits carry ON_EXCLUDED_ROADWAY) counts the
+    permit rows that were sited on an alley/driveway and snapped onto the subblock; they
+    are included in PERMIT_COUNT.
     """
 
     def aggregate(df: pd.DataFrame, count_name: str, dates: dict[str, tuple[str, str]]) -> pd.DataFrame:
@@ -422,6 +435,10 @@ def enrich_subblocks(
     out["DISTINCT_PERMIT_COUNT"] = out["DISTINCT_PERMIT_COUNT"].fillna(0).astype("int32")
     out["DISTINCT_SR_LOCATIONS"] = out["DISTINCT_SR_LOCATIONS"].fillna(0).astype("int32")
     out["SR_COUNT"] = out["SR_COUNT"].fillna(0).astype("int32")
+    if "ON_EXCLUDED_ROADWAY" in permits.columns:
+        ex = permits[(permits["ON_EXCLUDED_ROADWAY"] == 1) & permits[SUBBLOCK_IDX].notna()]
+        counts = ex.groupby(ex[SUBBLOCK_IDX].astype("int64")).size()
+        out["EXCLUDED_ROADWAY_PERMIT_COUNT"] = counts.reindex(out.index, fill_value=0).astype("int32")
     has_p = out["PERMIT_COUNT"] > 0
     has_s = out["SR_COUNT"] > 0
     out["FLAG_BOTH_PERMIT_AND_SR"] = (has_p & has_s).astype("int32")
@@ -460,6 +477,40 @@ def original_points(snapped: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """Permits at their source location, from the ORIG_X/ORIG_Y kept by match_to_subblocks."""
     geom = gpd.points_from_xy(snapped["ORIG_X"], snapped["ORIG_Y"], crs=snapped.crs)
     return snapped.drop(columns=["ORIG_X", "ORIG_Y"]).set_geometry(geom)
+
+
+def tag_source_roadway(
+    permits: gpd.GeoDataFrame,
+    subblocks: gpd.GeoDataFrame,
+    excluded: gpd.GeoDataFrame,
+    units_per_foot: float,
+) -> gpd.GeoDataFrame:
+    """Road type of the centerline nearest each permit's source (pre-snap) location.
+
+    Compares NEAR_DIST_FT (to the analysed subblocks) with the distance to ``excluded``
+    centerlines (alleys, driveways, ...). Adds SOURCE_ROADWAY_TYPE, SOURCE_ROADWAY_DIST_FT and
+    ON_EXCLUDED_ROADWAY = 1 where an excluded centerline is strictly nearer, i.e. the permit was
+    sited on an alley/driveway and snapping moved it onto a street (or left it unsnapped).
+    Expects the ORIG_X / ORIG_Y columns kept by match_to_subblocks(snap=True).
+    """
+    out = permits.copy()
+    near_ft = out["NEAR_DIST_FT"].astype("float64")
+    analysed_type = _lookup(subblocks["ROADWAY_TYPE"], out[SUBBLOCK_IDX])
+    ex_ft = pd.Series(np.nan, index=out.index, dtype="float64")
+    ex_type = pd.Series(pd.NA, index=out.index, dtype="object")
+    if not out.empty and not excluded.empty:
+        origin = gpd.GeoDataFrame(geometry=gpd.points_from_xy(out["ORIG_X"], out["ORIG_Y"]), index=out.index,
+                                  crs=out.crs)
+        j = gpd.sjoin_nearest(origin, excluded[["ROADWAY_TYPE", excluded.geometry.name]], how="left",
+                              distance_col="_dist")
+        j = j[~j.index.duplicated(keep="first")].reindex(out.index)
+        ex_ft = (j["_dist"] / units_per_foot).astype("float64")
+        ex_type = j["ROADWAY_TYPE"]
+    on_ex = (ex_ft.notna() & (near_ft.isna() | (ex_ft < near_ft))).to_numpy()
+    out["SOURCE_ROADWAY_TYPE"] = np.where(on_ex, ex_type, analysed_type)
+    out["SOURCE_ROADWAY_DIST_FT"] = np.where(on_ex, ex_ft, near_ft).round(2)
+    out["ON_EXCLUDED_ROADWAY"] = on_ex.astype("int32")
+    return out
 
 
 def connector_lines(
@@ -542,6 +593,8 @@ def aggregate_blocks(
         MIN_SR_INIT_DATE=("MIN_SR_INIT_DATE", "min"),
         MAX_SR_INIT_DATE=("MAX_SR_INIT_DATE", "max"),
         SUBBLOCKS_WITH_BOTH=("FLAG_BOTH_PERMIT_AND_SR", "sum"),
+        **({"EXCLUDED_ROADWAY_PERMIT_COUNT": ("EXCLUDED_ROADWAY_PERMIT_COUNT", "sum")}
+           if "EXCLUDED_ROADWAY_PERMIT_COUNT" in df.columns else {}),
     )
     if "WARD_ID" in df.columns:
         attrs["WARD_ID"] = g["WARD_ID"].agg(_mode)
@@ -552,8 +605,9 @@ def aggregate_blocks(
     out = gpd.GeoDataFrame(attrs, geometry=geoms.reindex(attrs.index).line_merge(), crs=enriched.crs).reset_index()
 
     for c in ("SUBBLOCK_COUNT", "PERMIT_COUNT", "DISTINCT_PERMIT_COUNT", "SR_COUNT", "DISTINCT_SR_LOCATIONS",
-              "SUBBLOCKS_WITH_BOTH"):
-        out[c] = out[c].astype("int32")
+              "SUBBLOCKS_WITH_BOTH", "EXCLUDED_ROADWAY_PERMIT_COUNT"):
+        if c in out.columns:
+            out[c] = out[c].astype("int32")
     has_p, has_s = out["PERMIT_COUNT"] > 0, out["SR_COUNT"] > 0
     out["FLAG_BOTH_PERMIT_AND_SR"] = (has_p & has_s).astype("int32")
     out["ACTIVITY_CLASS"] = _activity_class(has_p, has_s)
@@ -569,7 +623,9 @@ def top_conflicts(enriched: gpd.GeoDataFrame) -> pd.DataFrame:
     cols = [c for c in (UID, "ROUTENAME", "ROADWAY_TYPE", "FROMSTREET", "TOSTREET", "WARD_ID", "BLOCKID")
             if c in enriched.columns]
     c = enriched.loc[enriched["FLAG_BOTH_PERMIT_AND_SR"] == 1,
-                     [*cols, "DISTINCT_PERMIT_COUNT", "PERMIT_COUNT", "DISTINCT_SR_LOCATIONS", "SR_COUNT",
+                     [*cols, "DISTINCT_PERMIT_COUNT", "PERMIT_COUNT",
+                      *[x for x in ("EXCLUDED_ROADWAY_PERMIT_COUNT",) if x in enriched.columns],
+                      "DISTINCT_SR_LOCATIONS", "SR_COUNT",
                       *[d for d in ("MIN_PERMIT_EFF_DATE", "MAX_PERMIT_EXP_DATE") if d in enriched.columns],
                       "MIN_SR_INIT_DATE", "MAX_SR_INIT_DATE"]].copy()
     c["ACTIVITY_SCORE"] = (c["DISTINCT_PERMIT_COUNT"] + c["DISTINCT_SR_LOCATIONS"]).astype("int32")
@@ -783,11 +839,21 @@ counts unique SR locations; `SR_COUNT` includes repeat reports geocoded to the s
 * Repeat service requests at the same location (often block-range addresses such as
   "2900 - 2999 BLOCK OF ...", geocoded to one point) count once in `DISTINCT_SR_LOCATIONS`:
   {g('srs_matched'):,} matched requests sit at {g('srs_distinct_locations_matched', g('srs_matched')):,} distinct locations.
-* Open SR status mix: {g('sr_status_counts', 'n/a') or 'n/a'}. Only CLOSED / CANCEL / COMPLETE are
-  excluded, so `INSPCOMP` (inspection complete) counts as open - **confirm this definition with the requester**.
+* Open SR status mix: {g('sr_status_counts', 'n/a') or 'n/a'}. The request asks for requests that are
+  "open, pending, or have a completed inspection" (`OPEN`, `PENDING`, `INSPCOMP`). The supplied SQL
+  (`STATUS NOT IN ('CLOSED', 'CANCEL', 'COMPLETE')`) is used as given; it also admits statuses outside
+  that list: {g('srs_unlisted_status'):,} request(s) (e.g. `GEO ISSUE`).
 * `CSRNUMBER` is published but empty on every service request; `{SR_ID_FIELD}` is used as the request identifier.
 * Permit records further than {h['snap_tolerance_ft']:g} ft from any qualifying subblock are kept in `permits_snapped`
-  with `SNAPPED = 0` and no `SUBBLOCK_UID`: {g('permits_unmatched'):,} record(s).
+  with `SNAPPED = 0` and no `SUBBLOCK_UID`: {g('permits_unmatched'):,} record(s), of which
+  {g('permits_unmatched_on_excluded_roadway'):,} sit on an alley/driveway centerline (an excluded road type).
+* Permits sited on an excluded road type (alley, driveway, trail, walkway): {g('permits_on_excluded_roadway'):,}
+  record(s) / {g('permits_on_excluded_roadway_distinct'):,} permit(s) ({g('permits_source_roadway_counts', '') or 'none'}).
+  {g('permits_on_excluded_roadway_snapped'):,} of these are within {h['snap_tolerance_ft']:g} ft of a street and were snapped onto it, so they
+  count in `PERMIT_COUNT`; `ON_EXCLUDED_ROADWAY` / `SOURCE_ROADWAY_TYPE` mark them and
+  `EXCLUDED_ROADWAY_PERMIT_COUNT` gives the per-subblock share. {g('subblocks_with_only_excluded_roadway_permits'):,} subblock(s) have
+  permits only from such records ({g('dual_conflict_subblocks_only_excluded_roadway_permits'):,} of them dual-conflict) -
+  **decide whether alley/driveway work should count toward street blocks**.
 * Service requests further than {h['snap_tolerance_ft']:g} ft from a qualifying subblock (e.g. located on
   alleys or driveways) are not counted: {g('srs_unmatched'):,} request(s).
 {qa_rows}* Subblocks without a BLOCKID are treated as single-subblock blocks: {g('subblocks_without_blockid'):,}.
@@ -799,6 +865,7 @@ counts unique SR locations; `SR_COUNT` includes repeat reports geocoded to the s
 * **Subblocks:** `{h['subblock_where']}`
 * **Permits:** `{h['permit_where']}`
 * **Service requests:** `{h['sr_where']}`
+* **Excluded subblocks (permit source tagging only):** `{h.get('excluded_subblock_where', '-')}`
 """
 
 
@@ -846,7 +913,8 @@ def run(opts: RunOptions, client: ArcGISClient | None = None) -> dict:
     crs = CRS.from_user_input(opts.target_crs)
     per_ft = crs_units_per_foot(crs)
     tolerance = opts.tolerance_ft * per_ft
-    where = {"subblock": subblock_where(f), "permit": permit_where(f), "sr": service_request_where(f)}
+    where = {"subblock": subblock_where(f), "permit": permit_where(f), "sr": service_request_where(f),
+             "excluded_subblock": excluded_subblock_where(f)}
 
     LOG.info("=" * 72)
     LOG.info("DDOT GIS pipeline v%s - run started", __version__)
@@ -856,6 +924,7 @@ def run(opts: RunOptions, client: ArcGISClient | None = None) -> dict:
     sb_raw, _ = client.fetch(SUBBLOCKS_URL, where["subblock"])
     p_raw, p_info = client.fetch(PERMITS_URL, where["permit"])
     sr_raw, sr_info = client.fetch(CITYWORKS_URL, where["sr"])
+    ex_raw, _ = client.fetch(SUBBLOCKS_URL, where["excluded_subblock"])
     if sb_raw.empty:
         raise ArcGISError("Subblock query returned no features; cannot continue")
     _require_fields(p_raw, [PERMIT_DATE_FIELD], "permits")
@@ -863,6 +932,7 @@ def run(opts: RunOptions, client: ArcGISClient | None = None) -> dict:
 
     LOG.info("[2/5] Cleaning and reprojecting to %s", crs.to_string())
     subblocks = prepare_subblocks(sb_raw, crs)
+    excluded = prepare_subblocks(ex_raw, crs) if not ex_raw.empty else ex_raw.to_crs(crs)
     permits, p_null = drop_invalid_geometry(p_raw, "permits")
     srs, sr_null = drop_invalid_geometry(sr_raw, "service requests")
     permits = sanitize_columns(permits).to_crs(crs)
@@ -870,10 +940,15 @@ def run(opts: RunOptions, client: ArcGISClient | None = None) -> dict:
 
     LOG.info("[3/5] Snapping %d permits to subblock centerlines", len(permits))
     permits = match_to_subblocks(permits, subblocks, tolerance, per_ft, snap=True)
+    permits = tag_source_roadway(permits, subblocks, excluded, per_ft)
     srs = match_to_subblocks(srs, subblocks, tolerance, per_ft, snap=False)
     n_snapped = int(permits["SNAPPED"].sum()) if len(permits) else 0
     n_sr_matched = int(srs[UID].notna().sum()) if len(srs) else 0
     LOG.info("  permits snapped: %d / %d; service requests matched: %d / %d", n_snapped, len(permits), n_sr_matched, len(srs))
+    on_ex = permits["ON_EXCLUDED_ROADWAY"] == 1
+    snapped_ex = on_ex & (permits["SNAPPED"] == 1)
+    LOG.info("  permits sited on an excluded road type: %d (snapped onto a street: %d, left unsnapped: %d)",
+             int(on_ex.sum()), int(snapped_ex.sum()), int((on_ex & (permits["SNAPPED"] == 0)).sum()))
 
     LOG.info("[4/5] Enriching subblocks, aggregating blocks, building QA layers and insights")
     enriched = enrich_subblocks(subblocks, permits, srs)
@@ -881,7 +956,8 @@ def run(opts: RunOptions, client: ArcGISClient | None = None) -> dict:
     blocks = aggregate_blocks(enriched, per_ft, permits)
     n_block_conflict = int(blocks["FLAG_BOTH_PERMIT_AND_SR"].sum())
     permits_orig = original_points(permits)
-    qa_permit = connector_lines(permits, subblocks, ["PermitNumber", UID, "NEAR_DIST_FT"], per_ft, ("ORIG_X", "ORIG_Y"))
+    qa_permit = connector_lines(permits, subblocks, ["PermitNumber", UID, "NEAR_DIST_FT", "SOURCE_ROADWAY_TYPE",
+                                                     "ON_EXCLUDED_ROADWAY"], per_ft, ("ORIG_X", "ORIG_Y"))
     qa_sr = connector_lines(srs, subblocks, [SR_ID_FIELD, "DESCRIPTION", "STATUS", UID, "NEAR_DIST_FT"], per_ft)
     insights = {
         TABLE_TOP_CONFLICTS: top_conflicts(enriched),
@@ -908,6 +984,20 @@ def run(opts: RunOptions, client: ArcGISClient | None = None) -> dict:
         "permits_distinct": int(permits[PERMIT_ID_FIELD].nunique()) if PERMIT_ID_FIELD in permits.columns else len(permits),
         "permits_snapped": n_snapped,
         "permits_unmatched": len(permits) - n_snapped,
+        "excluded_subblocks_fetched": len(ex_raw),
+        "permits_on_excluded_roadway": int(on_ex.sum()),
+        "permits_on_excluded_roadway_distinct": int(permits.loc[on_ex, PERMIT_ID_FIELD].nunique())
+        if PERMIT_ID_FIELD in permits.columns else int(on_ex.sum()),
+        "permits_on_excluded_roadway_snapped": int(snapped_ex.sum()),
+        "permits_unmatched_on_excluded_roadway": int((on_ex & (permits["SNAPPED"] == 0)).sum()),
+        "permits_source_roadway_counts": "; ".join(
+            f"{k} {v}" for k, v in permits.loc[on_ex, "SOURCE_ROADWAY_TYPE"].value_counts().items()),
+        "subblocks_with_excluded_roadway_permits": int((enriched["EXCLUDED_ROADWAY_PERMIT_COUNT"] > 0).sum()),
+        "subblocks_with_only_excluded_roadway_permits": int(
+            ((enriched["PERMIT_COUNT"] > 0) & (enriched["EXCLUDED_ROADWAY_PERMIT_COUNT"] == enriched["PERMIT_COUNT"])).sum()),
+        "dual_conflict_subblocks_only_excluded_roadway_permits": int(
+            ((enriched["FLAG_BOTH_PERMIT_AND_SR"] == 1)
+             & (enriched["EXCLUDED_ROADWAY_PERMIT_COUNT"] == enriched["PERMIT_COUNT"])).sum()),
         "srs_fetched": len(sr_raw),
         "srs_null_geometry": sr_null,
         "srs_valid": len(srs),
@@ -916,6 +1006,7 @@ def run(opts: RunOptions, client: ArcGISClient | None = None) -> dict:
         "sr_status_counts": "; ".join(f"{k} {v}" for k, v in srs["STATUS"].value_counts().items())
         if "STATUS" in srs.columns else "",
         "srs_unmatched": len(srs) - n_sr_matched,
+        "srs_unlisted_status": int((~srs["STATUS"].isin(SR_REQUESTED_STATUSES)).sum()) if "STATUS" in srs.columns else 0,
         "subblocks_with_permits": int((enriched["PERMIT_COUNT"] > 0).sum()),
         "subblocks_with_srs": int((enriched["SR_COUNT"] > 0).sum()),
         "dual_conflict_subblocks": n_conflict,
@@ -931,6 +1022,7 @@ def run(opts: RunOptions, client: ArcGISClient | None = None) -> dict:
         "subblock_where": where["subblock"],
         "permit_where": where["permit"],
         "sr_where": where["sr"],
+        "excluded_subblock_where": where["excluded_subblock"],
     }
 
     gpkg = opts.out_dir / "data" / GPKG_NAME

@@ -56,6 +56,7 @@ def test_default_where_clauses_match_spec(process):
         " 'STREET REPAVING', 'STREET REPAIR', 'STREET PAVING SCHEDU')"
         " AND INITIATEDDATE >= timestamp '2025-10-01 00:00:00'"
     )
+    assert process.excluded_subblock_where(f) == "ROADTYPE NOT IN ('1', '2', '3') OR ROADTYPE IS NULL"
     custom = process.Filters(sr_min_initiated=date(2026, 1, 2))
     assert "timestamp '2026-01-02 00:00:00'" in process.service_request_where(custom)
 
@@ -385,3 +386,53 @@ def test_enrich_date_windows(process):
 
     top = process.top_conflicts(enriched)
     assert {"MIN_PERMIT_EFF_DATE", "MIN_SR_INIT_DATE"} <= set(top.columns)
+
+
+# --- Permit source road type -------------------------------------------------
+def _alleys(process):
+    raw = gpd.GeoDataFrame(
+        {"OBJECTID": [10, 11], "SUBBLOCKKEY": ["X1", "X2"], "ROADTYPE": ["4", "5"]},
+        geometry=[LineString([(0, 100), (1000, 100)]), LineString([(5100, 0), (5100, 1000)])],
+        crs=CRS_FT,
+    )
+    return process.prepare_subblocks(raw, CRS_FT)
+
+
+def test_tag_source_roadway(process):
+    sb = _subblocks(process)
+    permits = process.match_to_subblocks(
+        _points([("on_street", "2026-01-01", (100, 0)),     # on street A
+                 ("on_alley", "2026-01-01", (200, 100)),    # on alley, 100 ft from street A
+                 ("driveway", "2026-01-01", (5100, 500)),   # on driveway, 100 ft from service lane
+                 ("far_alley", "2026-01-01", (600, 101))],  # alley, 101 ft from street A
+                "ExpirationDate"),
+        sb, 150, 1.0, snap=True)
+    out = process.tag_source_roadway(permits, sb, _alleys(process), 1.0).set_index("ID")
+
+    assert out.loc["on_street", "ON_EXCLUDED_ROADWAY"] == 0
+    assert out.loc["on_street", "SOURCE_ROADWAY_TYPE"] == "STREET"
+    assert out.loc["on_alley", "ON_EXCLUDED_ROADWAY"] == 1
+    assert out.loc["on_alley", "SOURCE_ROADWAY_TYPE"] == "ALLEY"
+    assert out.loc["on_alley", "SOURCE_ROADWAY_DIST_FT"] == 0
+    assert out.loc["on_alley", "SNAPPED"] == 1 and out.loc["on_alley", "SUBBLOCK_UID"] == "A"
+    assert out.loc["driveway", "SOURCE_ROADWAY_TYPE"] == "DRIVEWAY"
+
+    tight = process.match_to_subblocks(_points([("far_alley", "2026-01-01", (600, 101))], "ExpirationDate"),
+                                       sb, 50, 1.0, snap=True)
+    t = process.tag_source_roadway(tight, sb, _alleys(process), 1.0).iloc[0]
+    assert t["SNAPPED"] == 0 and t["ON_EXCLUDED_ROADWAY"] == 1 and t["SOURCE_ROADWAY_TYPE"] == "ALLEY"
+
+    srs = process.match_to_subblocks(_points([], "INITIATEDDATE"), sb, 150, 1.0, snap=False)
+    enriched = process.enrich_subblocks(sb, out.reset_index(), srs).set_index("SUBBLOCK_UID")
+    assert enriched.loc["A", "PERMIT_COUNT"] == 3  # counting unchanged; alley rows still snapped to A
+    assert enriched.loc["A", "EXCLUDED_ROADWAY_PERMIT_COUNT"] == 2
+    assert enriched.loc["OID-3", "EXCLUDED_ROADWAY_PERMIT_COUNT"] == 1
+
+
+def test_tag_source_roadway_without_excluded_layer(process):
+    sb = _subblocks(process)
+    permits = process.match_to_subblocks(_points([("p", "2026-01-01", (100, 10))], "ExpirationDate"),
+                                         sb, 150, 1.0, snap=True)
+    out = process.tag_source_roadway(permits, sb, sb.iloc[0:0], 1.0)
+    assert out["ON_EXCLUDED_ROADWAY"].tolist() == [0]
+    assert out["SOURCE_ROADWAY_TYPE"].tolist() == ["STREET"]
