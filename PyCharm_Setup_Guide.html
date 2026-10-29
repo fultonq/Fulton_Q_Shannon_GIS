@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PyCharm Setup Guide</title>
+<meta name="description" content="Set up the DDOT Maintenance Operations GIS project in PyCharm Professional on Windows, WSL Ubuntu and macOS (Apple Silicon).">
+<style>
+:root {
+  --bg: #f7f7f5; --surface: #ffffff; --surface-2: #f0f0ec; --text: #1d1d1b; --muted: #5d5d58;
+  --border: #dcdcd6; --accent: #b3261e; --accent-soft: #fbe9e7; --link: #0b5cad;
+  --ok: #1b7f4b; --ok-soft: #e5f4ec; --warn: #8a5a00; --warn-soft: #fff4dc;
+  --code-bg: #f3f3ef; --code-text: #2a2a28; --shadow: 0 1px 2px rgba(0,0,0,.06);
+  --mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --surface: #1f1f1d; --surface-2: #2a2a27; --text: #ecece8; --muted: #a8a8a1;
+    --border: #3a3a36; --accent: #ff8a80; --accent-soft: #3a1f1d; --link: #8ab8ff;
+    --ok: #6fd39b; --ok-soft: #1c3226; --warn: #f0c060; --warn-soft: #3a2f16;
+    --code-bg: #262624; --code-text: #e6e6e1; --shadow: none;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --surface: #1f1f1d; --surface-2: #2a2a27; --text: #ecece8; --muted: #a8a8a1;
+  --border: #3a3a36; --accent: #ff8a80; --accent-soft: #3a1f1d; --link: #8ab8ff;
+  --ok: #6fd39b; --ok-soft: #1c3226; --warn: #f0c060; --warn-soft: #3a2f16;
+  --code-bg: #262624; --code-text: #e6e6e1; --shadow: none;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 var(--sans); }
+a { color: var(--link); }
+.wrap { max-width: 980px; margin: 0 auto; padding: 32px 16px 80px; }
+header h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); line-height: 1.2; margin: 0 0 8px; letter-spacing: -.01em; }
+header p.lede { color: var(--muted); margin: 0 0 20px; max-width: 70ch; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.chip { font-size: .8rem; padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--muted); }
+h2 { font-size: 1.35rem; margin: 40px 0 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+h3 { font-size: 1.08rem; margin: 28px 0 8px; }
+p, li { max-width: 78ch; }
+ol, ul { padding-left: 1.4em; }
+li { margin: 4px 0; }
+code { font-family: var(--mono); font-size: .88em; background: var(--code-bg); color: var(--code-text); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.menu { font-weight: 600; white-space: nowrap; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; box-shadow: var(--shadow); margin: 16px 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.grid2 .card { margin: 0; }
+.card h4 { margin: 0 0 6px; font-size: 1rem; }
+.card p { margin: 0; color: var(--muted); font-size: .95rem; }
+.note, .warn, .ok { border-radius: 8px; padding: 12px 14px; margin: 14px 0; border-left: 4px solid; }
+.note { background: var(--surface-2); border-color: var(--link); }
+.warn { background: var(--warn-soft); border-color: var(--warn); }
+.ok { background: var(--ok-soft); border-color: var(--ok); }
+.note > :first-child, .warn > :first-child, .ok > :first-child { margin-top: 0; }
+.note > :last-child, .warn > :last-child, .ok > :last-child { margin-bottom: 0; }
+.table-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--border); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; background: var(--surface); }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--surface-2); font-weight: 600; }
+tr:last-child td { border-bottom: 0; }
+pre { position: relative; background: var(--code-bg); color: var(--code-text); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; overflow-x: auto; font: 13.5px/1.5 var(--mono); margin: 10px 0 16px; }
+pre code { background: none; padding: 0; font-size: inherit; }
+.copy { position: absolute; top: 6px; right: 6px; font: 12px var(--sans); padding: 3px 9px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; }
+.copy:hover { color: var(--text); }
+/* Platform tabs */
+.tabs { position: sticky; top: 0; z-index: 5; background: var(--bg); padding: 10px 0; display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
+.tab { font: 600 .95rem var(--sans); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+:root[data-theme="dark"] .tab[aria-selected="true"] { color: #1b1b1b; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .tab[aria-selected="true"] { color: #1b1b1b; } }
+.theme { margin-left: auto; font: .85rem var(--sans); padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); cursor: pointer; }
+.panel[hidden] { display: none; }
+.step { counter-increment: step; position: relative; padding-left: 40px; margin: 22px 0; }
+.step::before { content: counter(step); position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 700; display: grid; place-items: center; font-size: .9rem; }
+.steps { counter-reset: step; }
+.step h3 { margin-top: 0; }
+nav.toc { font-size: .93rem; }
+nav.toc ol { margin: 6px 0 0; }
+footer { margin-top: 48px; color: var(--muted); font-size: .85rem; }
+@media (max-width: 560px) { .step { padding-left: 34px; } .theme { margin-left: 0; } }
+@media print { .tabs, .copy, .theme { display: none; } .panel[hidden] { display: block; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Setting up the DDOT GIS project in PyCharm Professional</h1>
+  <p class="lede">How to clone, configure, run and test the <strong>DDOT Maintenance Operations GIS</strong>
+  project (permits, service requests and roadway subblocks) in PyCharm Pro on <strong>Windows</strong>,
+  <strong>WSL Ubuntu</strong> and <strong>macOS on Apple Silicon (M4 Max)</strong>.</p>
+  <div class="meta">
+    <span class="chip">Repo: fultonq/Fulton_Q_Shannon_GIS</span>
+    <span class="chip">Branch: v2.3-data-review</span>
+    <span class="chip">QGIS 3.40 / 3.44 LTR</span>
+    <span class="chip">Python 3.12+</span>
+  </div>
+</header>
+
+<h2 id="overview">How the project fits together</h2>
+<p>The project uses <strong>two Python interpreters</strong>, because PyQGIS can only be imported by the
+Python that ships with QGIS:</p>
+<div class="table-wrap"><table>
+  <tr><th>Interpreter</th><th>Runs</th><th>Packages</th></tr>
+  <tr><td><strong>Project venv</strong> (<code>.venv</code>)</td>
+      <td><code>01_pull_and_process_data.py</code>, <code>generate_and_launch_gis.py</code>, the tests</td>
+      <td><code>requirements-dev.txt</code>: geopandas, pandas, pyogrio, pyproj, requests, shapely, pytest</td></tr>
+  <tr><td><strong>QGIS Python</strong></td>
+      <td><code>02_create_qgis_project.py</code>: exports the shapefiles and builds both <code>.qgz</code> projects</td>
+      <td>Comes with QGIS (PyQGIS); nothing to install</td></tr>
+</table></div>
+
+<div class="grid2">
+  <div class="card"><h4>1 · <code>01_pull_and_process_data.py</code></h4><p>Pulls the three DC GIS REST layers, snaps permits, enriches subblocks, and writes <code>data/ddot_maintenance_operations.gpkg</code>, the log and the summary report. Needs internet.</p></div>
+  <div class="card"><h4>2 · <code>02_create_qgis_project.py</code></h4><p>Writes <code>shapefiles/</code>, <code>ddot_maintenance_operations.qgz</code> and <code>shapefiles_map.qgz</code>, validates them and (optionally) zips the deliverable.</p></div>
+  <div class="card"><h4>Runner · <code>generate_and_launch_gis.py</code></h4><p>Runs 01 then 02 into <code>build/&lt;Name&gt;_GIS_V2/</code>, packages the zip and opens QGIS. Finds the QGIS Python itself (or via <code>QGIS_PYTHON</code>).</p></div>
+  <div class="card"><h4>Tests · <code>tests/</code></h4><p>pytest. The <code>network</code> marker hits the live services; deselect it with <code>-m "not network"</code> for a fast offline run (57 tests).</p></div>
+</div>
+
+<nav class="toc card" aria-label="Contents">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#platform">Platform setup</a>: pick Windows, WSL Ubuntu or macOS below</li>
+    <li><a href="#runconfigs">Run configurations</a> (same on every platform)</li>
+    <li><a href="#tests">Running the tests</a></li>
+    <li><a href="#qgis">Opening the results in QGIS</a></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
+  </ol>
+</nav>
+
+<h2 id="platform">Platform setup</h2>
+
+<div class="tabs" role="tablist" aria-label="Platform">
+  <button class="tab" role="tab" id="tab-win" aria-controls="p-win" aria-selected="true">Windows</button>
+  <button class="tab" role="tab" id="tab-wsl" aria-controls="p-wsl" aria-selected="false">WSL Ubuntu</button>
+  <button class="tab" role="tab" id="tab-mac" aria-controls="p-mac" aria-selected="false">macOS (M4 Max)</button>
+  <button class="theme" id="themeBtn" type="button" aria-label="Toggle colour theme">Theme</button>
+</div>
+
+<!-- ============================ WINDOWS ============================ -->
+<section class="panel steps" id="p-win" role="tabpanel" aria-labelledby="tab-win">
+
+<div class="step">
+<h3>Install the prerequisites</h3>
+<ul>
+  <li><strong>PyCharm Professional</strong>, via JetBrains Toolbox or the standalone installer.</li>
+  <li><strong>Git for Windows</strong> (<code>git --version</code> in PowerShell to check).</li>
+  <li><strong>Python 3.12 or 3.13</strong> from python.org (tick <em>Add python.exe to PATH</em>). The Microsoft Store Python also works.</li>
+  <li><strong>QGIS LTR</strong>. Either the OSGeo4W network installer (this machine: per-user at
+      <code>%LOCALAPPDATA%\Programs\OSGeo4W</code>, QGIS 3.44 LTR) or the standalone MSI
+      (<code>C:\Program Files\QGIS 3.44.x</code>).</li>
+</ul>
+<div class="note"><p><strong>Where to clone:</strong> use a plain local folder such as <code>C:\dev</code>, not
+OneDrive. OneDrive syncing a <code>.venv</code> and a live GeoPackage causes slowdowns and file locks.</p></div>
+</div>
+
+<div class="step">
+<h3>Connect GitHub over SSH (once per machine)</h3>
+<pre><code>ssh-keygen -t ed25519 -C "you@example.com"
+type $env:USERPROFILE\.ssh\id_ed25519.pub   # copy into GitHub ▸ Settings ▸ SSH and GPG keys
+ssh -T git@github.com                       # "Hi fultonq! You've successfully authenticated"</code></pre>
+<p>Or skip SSH and sign in with <span class="menu">Settings ▸ Version Control ▸ GitHub ▸ +</span> and clone the HTTPS URL.</p>
+</div>
+
+<div class="step">
+<h3>Clone and check out the branch</h3>
+<ol>
+  <li>PyCharm welcome screen ▸ <span class="menu">Clone Repository</span>.</li>
+  <li>URL <code>git@github.com:fultonq/Fulton_Q_Shannon_GIS.git</code>, directory <code>C:\dev\Fulton_Q_Shannon_GIS</code> ▸ <span class="menu">Clone</span>. Trust the project when asked.</li>
+  <li><span class="menu">Git ▸ Branches…</span> ▸ <code>origin/v2.3-data-review</code> ▸ <span class="menu">Checkout</span>.</li>
+</ol>
+</div>
+
+<div class="step">
+<h3>Create the project venv</h3>
+<ol>
+  <li>Click the interpreter widget in the bottom-right status bar ▸ <span class="menu">Add New Interpreter ▸ Add Local Interpreter…</span></li>
+  <li><span class="menu">Virtualenv</span> ▸ <em>Generate new</em>, location <code>C:\dev\Fulton_Q_Shannon_GIS\.venv</code>, base interpreter your Python 3.12/3.13 ▸ <span class="menu">OK</span>.</li>
+  <li>Open the <span class="menu">Terminal</span> tool window (it activates the venv) and install:</li>
+</ol>
+<pre><code>python -m pip install --upgrade pip
+pip install -r requirements-dev.txt</code></pre>
+<p>Windows wheels for geopandas, pyogrio, shapely and pyproj bundle GDAL/GEOS/PROJ, so no separate GDAL install is needed.</p>
+</div>
+
+<div class="step">
+<h3>Register the QGIS Python (for 02)</h3>
+<p>The OSGeo4W Python only imports <code>qgis.core</code> when its environment variables are set. There are two ways to give it that environment.</p>
+
+<p><strong>Option A: Shell Script run configuration (simplest).</strong> <span class="menu">Run ▸ Edit Configurations ▸ + ▸ Shell Script</span>:</p>
+<div class="table-wrap"><table>
+  <tr><th>Field</th><th>Value</th></tr>
+  <tr><td>Name</td><td><code>02 Build QGIS projects</code></td></tr>
+  <tr><td>Execute</td><td>Script text</td></tr>
+  <tr><td>Script text</td><td><code>&amp; "$env:LOCALAPPDATA\Programs\OSGeo4W\bin\python-qgis-ltr.bat" 02_create_qgis_project.py --no-package</code></td></tr>
+  <tr><td>Working directory</td><td><code>$ProjectFileDir$</code></td></tr>
+  <tr><td>Interpreter path</td><td><code>powershell.exe</code></td></tr>
+</table></div>
+<p>With the standalone MSI, use <code>"C:\Program Files\QGIS 3.44.x\bin\python-qgis-ltr.bat"</code> instead.</p>
+
+<p><strong>Option B: a real interpreter, so you can use breakpoints and PyQGIS code completion.</strong></p>
+<ol>
+  <li><span class="menu">Add New Interpreter ▸ Add Local Interpreter… ▸ System Interpreter</span> ▸
+      <code>%LOCALAPPDATA%\Programs\OSGeo4W\bin\python.exe</code>. Name it <em>QGIS Python</em>.</li>
+  <li>In the <code>02</code> <strong>Python</strong> run configuration (next section), paste these into
+      <span class="menu">Environment variables</span>. Replace <code>R</code> with your OSGeo4W folder, e.g.
+      <code>C:\Users\fqsha\AppData\Local\Programs\OSGeo4W</code>:</li>
+</ol>
+<pre><code>PATH=R\bin;R\apps\qgis-ltr\bin;R\apps\Qt5\bin;R\apps\Python312\Scripts;C:\Windows\system32;C:\Windows
+PYTHONHOME=R\apps\Python312
+PYTHONPATH=R\apps\qgis-ltr\python
+QGIS_PREFIX_PATH=R\apps\qgis-ltr
+QT_PLUGIN_PATH=R\apps\qgis-ltr\qtplugins;R\apps\Qt5\plugins
+GDAL_DATA=R\apps\gdal\share\gdal
+GDAL_DRIVER_PATH=R\apps\gdal\lib\gdalplugins
+PROJ_DATA=R\share\proj
+PYTHONUTF8=1</code></pre>
+<div class="ok"><p>Tested on this machine: with exactly these variables, OSGeo4W's <code>python.exe</code> loads QGIS 3.44.15, resolves EPSG:2248 and imports geopandas.</p></div>
+<div class="warn"><p>Set these <em>per run configuration</em>, never system-wide, and don't launch PyCharm from an OSGeo4W shell.
+<code>PYTHONHOME</code> pointing at QGIS's Python 3.12 breaks every other interpreter, including your venv.</p></div>
+</div>
+
+<div class="step">
+<h3>Tell the runner where QGIS is</h3>
+<p><code>generate_and_launch_gis.py</code> looks for QGIS in <code>C:\Program Files\QGIS*</code> and <code>C:\OSGeo4W*</code>.
+A per-user OSGeo4W install isn't in either place, so add this to the runner's run configuration environment:</p>
+<pre><code>QGIS_PYTHON=C:\Users\fqsha\AppData\Local\Programs\OSGeo4W\bin\python-qgis-ltr.bat</code></pre>
+</div>
+
+<div class="step">
+<h3>Open results in QGIS</h3>
+<pre><code>&amp; "$env:LOCALAPPDATA\Programs\OSGeo4W\bin\qgis-ltr.bat" shapefiles_map.qgz</code></pre>
+<p>Or double-click the <code>.qgz</code> in Explorer.</p>
+</div>
+</section>
+
+<!-- ============================ WSL ============================ -->
+<section class="panel steps" id="p-wsl" role="tabpanel" aria-labelledby="tab-wsl" hidden>
+
+<div class="note"><p><strong>Model:</strong> PyCharm Pro runs on Windows. The code, venv and QGIS live inside Ubuntu, and PyCharm runs everything there through its WSL interpreter support. QGIS's GUI opens on your Windows desktop through WSLg.</p></div>
+
+<div class="step">
+<h3>Prepare Ubuntu</h3>
+<pre><code>sudo apt update
+sudo apt install -y git python3-venv python3-pip
+# QGIS LTR + PyQGIS: follow qgis.org ▸ Download ▸ Linux ▸ Debian/Ubuntu (LTR repository), then
+sudo apt install -y qgis python3-qgis
+python3 -c "import qgis.core; print('PyQGIS OK')"</code></pre>
+<p>This machine: Python 3.13, QGIS 3.40.8 at <code>/usr/bin/qgis</code>.</p>
+</div>
+
+<div class="step">
+<h3>Clone inside the Linux file system</h3>
+<pre><code>mkdir -p ~/qgis_project02 &amp;&amp; cd ~/qgis_project02
+git clone git@github.com:fultonq/Fulton_Q_Shannon_GIS.git python_qgis
+cd python_qgis &amp;&amp; git checkout v2.3-data-review</code></pre>
+<div class="warn"><p>Keep the clone under <code>~</code>. Working from <code>/mnt/c/...</code> is very slow, and GeoPackage locking misbehaves there.</p></div>
+<p>SSH keys in Ubuntu are separate from Windows: run <code>ssh-keygen -t ed25519</code> in Ubuntu and add <code>~/.ssh/id_ed25519.pub</code> to GitHub.</p>
+</div>
+
+<div class="step">
+<h3>Create the venv (in Ubuntu)</h3>
+<pre><code>python3 -m venv .venv
+.venv/bin/pip install --upgrade pip
+.venv/bin/pip install -r requirements-dev.txt</code></pre>
+</div>
+
+<div class="step">
+<h3>Open the project in PyCharm</h3>
+<p><strong>Recommended:</strong> <span class="menu">File ▸ Open…</span> ▸ <code>\\wsl.localhost\Ubuntu-24.04\home\fqsha\qgis_project02\python_qgis</code>.
+PyCharm Pro detects the WSL location and uses Git from inside Ubuntu.</p>
+<p><strong>Faster on large projects:</strong> welcome screen ▸ <span class="menu">Remote Development ▸ WSL</span> ▸ pick
+<em>Ubuntu-24.04</em> and the folder. The IDE backend then runs inside Linux, so indexing isn't slowed down by the share.</p>
+</div>
+
+<div class="step">
+<h3>Add both interpreters</h3>
+<ol>
+  <li>Interpreter widget ▸ <span class="menu">Add New Interpreter ▸ On WSL…</span> ▸ distribution <em>Ubuntu-24.04</em> ▸
+      <span class="menu">Virtualenv ▸ Select existing</span> ▸ <code>/home/fqsha/qgis_project02/python_qgis/.venv/bin/python</code>.
+      Make this the project interpreter.</li>
+  <li>Again <span class="menu">On WSL… ▸ System Interpreter</span> ▸ <code>/usr/bin/python3</code>. Name it <em>QGIS Python (WSL)</em>.
+      No extra environment is needed; <code>02</code> sets <code>QT_QPA_PLATFORM=offscreen</code> itself.</li>
+</ol>
+<p>The runner finds <code>/usr/bin/python3</code> automatically, so <code>QGIS_PYTHON</code> isn't needed here.</p>
+</div>
+
+<div class="step">
+<h3>Open results in QGIS</h3>
+<p><strong>Linux QGIS (WSLg window):</strong></p>
+<pre><code>qgis shapefiles_map.qgz &amp;</code></pre>
+<p><strong>Windows QGIS:</strong> copy the folder to the Windows drive first. Windows QGIS cannot open the GeoPackage over
+<code>\\wsl.localhost</code> (<code>database is locked</code>):</p>
+<pre><code>rsync -a --exclude='.venv/' --exclude='__pycache__/' --exclude='.pytest_cache/' --exclude='build/' \
+  ./ /mnt/c/Users/fqsha/OneDrive/Desktop/python_qgis/</code></pre>
+</div>
+</section>
+
+<!-- ============================ macOS ============================ -->
+<section class="panel steps" id="p-mac" role="tabpanel" aria-labelledby="tab-mac" hidden>
+
+<div class="warn"><p>The macOS steps follow the standard Apple Silicon toolchain but have <strong>not been run on a Mac</strong>
+for this project. The QGIS Python path in step 4 is the one to check first.</p></div>
+
+<div class="step">
+<h3>Install the prerequisites</h3>
+<pre><code>xcode-select --install                     # git + build tools
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+brew install python@3.13</code></pre>
+<ul>
+  <li><strong>PyCharm Professional</strong>, the <em>Apple Silicon</em> build (Toolbox or .dmg).</li>
+  <li><strong>QGIS LTR</strong> macOS installer from qgis.org ▸ drag to <code>/Applications</code>. Open it once from Finder
+      with <span class="menu">right-click ▸ Open</span> so Gatekeeper allows it.</li>
+</ul>
+</div>
+
+<div class="step">
+<h3>SSH key, clone, branch</h3>
+<pre><code>ssh-keygen -t ed25519 -C "you@example.com"
+pbcopy &lt; ~/.ssh/id_ed25519.pub              # paste into GitHub ▸ Settings ▸ SSH and GPG keys
+mkdir -p ~/dev &amp;&amp; cd ~/dev
+git clone git@github.com:fultonq/Fulton_Q_Shannon_GIS.git
+cd Fulton_Q_Shannon_GIS &amp;&amp; git checkout v2.3-data-review</code></pre>
+<p>Then in PyCharm: <span class="menu">File ▸ Open…</span> ▸ <code>~/dev/Fulton_Q_Shannon_GIS</code>. Avoid iCloud-synced folders such as Desktop and Documents.</p>
+</div>
+
+<div class="step">
+<h3>Create the venv</h3>
+<pre><code>/opt/homebrew/bin/python3.13 -m venv .venv
+.venv/bin/pip install --upgrade pip
+.venv/bin/pip install -r requirements-dev.txt     # native arm64 wheels</code></pre>
+<p>In PyCharm: interpreter widget ▸ <span class="menu">Add New Interpreter ▸ Add Local Interpreter… ▸ Virtualenv ▸ Select existing</span> ▸ <code>.venv/bin/python</code>.</p>
+</div>
+
+<div class="step">
+<h3>Find and register the QGIS Python</h3>
+<pre><code>ls /Applications/QGIS*.app/Contents/MacOS/bin/python3
+/Applications/QGIS-LTR.app/Contents/MacOS/bin/python3 -c "import qgis.core; print('PyQGIS OK')"</code></pre>
+<p>If that path doesn't exist in your QGIS build, locate the bundled interpreter:</p>
+<pre><code>find /Applications/QGIS-LTR.app/Contents -maxdepth 3 -name 'python3*' -type f -perm -u+x</code></pre>
+<ol>
+  <li>PyCharm: <span class="menu">Add Local Interpreter… ▸ System Interpreter</span> ▸ that path. Name it <em>QGIS Python (macOS)</em>.</li>
+  <li>If <code>import qgis.core</code> fails from PyCharm but works in Terminal, add
+      <code>PYTHONPATH=/Applications/QGIS-LTR.app/Contents/Resources/python</code> to the 02 run configuration.</li>
+  <li>The runner looks for <code>/Applications/QGIS*.app/Contents/MacOS/bin/python3</code>. If yours is elsewhere, set
+      <code>QGIS_PYTHON=&lt;path&gt;</code> in the runner's run configuration.</li>
+</ol>
+</div>
+
+<div class="step">
+<h3>Open results in QGIS</h3>
+<pre><code>open -a QGIS-LTR shapefiles_map.qgz</code></pre>
+<p>Arial ships with macOS, so the street labels render as designed.</p>
+</div>
+</section>
+
+<h2 id="runconfigs">Run configurations</h2>
+<p><span class="menu">Run ▸ Edit Configurations ▸ + ▸ Python</span>. For every configuration, set the working directory to the
+project root (<code>$ProjectFileDir$</code>). Tick <em>Store as project file</em> if you like; <code>.idea/</code> is git-ignored, so it stays local.</p>
+<div class="table-wrap"><table>
+  <tr><th>Name</th><th>Script</th><th>Parameters</th><th>Interpreter</th><th>Notes</th></tr>
+  <tr><td><strong>01 Pull &amp; process</strong></td><td><code>01_pull_and_process_data.py</code></td><td><code>-v</code></td><td>Project venv</td>
+      <td>Needs internet; a few minutes. Options: <code>--tolerance-ft 150</code>, <code>--crs EPSG:2248</code>, <code>--permit-min-expiration 2025-10-01</code>, <code>--sr-min-initiated 2025-10-01</code>.</td></tr>
+  <tr><td><strong>02 Build QGIS projects</strong></td><td><code>02_create_qgis_project.py</code></td><td><code>--no-package</code></td><td>QGIS Python</td>
+      <td>Windows: Option A (Shell Script) or B (env vars). Add <code>--no-live-layers</code> when offline.</td></tr>
+  <tr><td><strong>Build deliverable</strong></td><td><code>generate_and_launch_gis.py</code></td><td><code>Fulton_Q_Shannon_GIS_V2 --no-launch</code></td><td>Project venv</td>
+      <td>Writes <code>build/Fulton_Q_Shannon_GIS_V2/</code> and the <code>.zip</code>. Add <code>--skip-fetch</code> to reuse the GeoPackage. Windows per-user OSGeo4W: set <code>QGIS_PYTHON</code>.</td></tr>
+  <tr><td><strong>Package zip</strong></td><td><code>02_create_qgis_project.py</code></td><td><code>--first-name Fulton --middle-initial Q --last-name Shannon --version-label V2</code></td><td>QGIS Python</td>
+      <td>Builds in place, then zips to <code>../Fulton_Q_Shannon_GIS_V2.zip</code> (the parent folder; the zip can't go inside the project). Use <code>--zip-dir</code> to choose another folder outside it.</td></tr>
+</table></div>
+<p>Typical cycle: <strong>01</strong> (refresh data) → <strong>02</strong> (shapefiles + projects) → open <code>shapefiles_map.qgz</code> in QGIS → <strong>Tests</strong> → commit.</p>
+
+<h2 id="tests">Running the tests</h2>
+<ol>
+  <li><span class="menu">Settings ▸ Tools ▸ Python Integrated Tools</span> ▸ Default test runner: <strong>pytest</strong>.</li>
+  <li><span class="menu">Run ▸ Edit Configurations ▸ + ▸ Python tests ▸ pytest</span>: target <em>Custom</em> /
+      script path <code>tests</code>, additional arguments <code>-m "not network"</code>, interpreter <strong>Project venv</strong>.</li>
+  <li>Expected: <code>57 passed, 1 deselected</code>. Drop <code>-m "not network"</code> to include the live-service test.</li>
+</ol>
+<p>Or from the PyCharm terminal:</p>
+<pre><code>python -m pytest -q -m "not network"</code></pre>
+
+<h2 id="qgis">Opening the results in QGIS</h2>
+<div class="table-wrap"><table>
+  <tr><th>File</th><th>What it is</th></tr>
+  <tr><td><code>ddot_maintenance_operations.qgz</code></td><td>Full project: GeoPackage analysis layers, live REST feeds, QA layers, insight tables, shapefile group, basemaps.</td></tr>
+  <tr><td><code>shapefiles_map.qgz</code></td><td>Just the six shapefiles, styled, with street-name labels (Arial) and an OpenStreetMap basemap.</td></tr>
+  <tr><td><code>QGIS_Dashboard_Guide.md</code></td><td>Step-by-step guide to building the interactive and printable dashboard (PyCharm's Markdown preview renders it).</td></tr>
+</table></div>
+
+<h2 id="troubleshooting">Troubleshooting</h2>
+<div class="table-wrap"><table>
+  <tr><th>Symptom</th><th>Cause / fix</th></tr>
+  <tr><td><code>PyQGIS is not importable from this interpreter</code></td><td>02 ran with the venv. Switch its run configuration to the QGIS Python (Windows: Option A or B).</td></tr>
+  <tr><td>Runner: <code>Could not find a Python interpreter with PyQGIS</code></td><td>Set <code>QGIS_PYTHON</code> (or pass <code>--qgis-python</code>) to <code>python-qgis-ltr.bat</code> / <code>/usr/bin/python3</code> / the QGIS.app python3.</td></tr>
+  <tr><td>Windows: <code>ImportError: DLL load failed</code> for qgis</td><td>An environment variable is missing or <code>R</code> is wrong in Option B. Compare with <code>OSGeo4W\bin\o4w_env.bat</code> and <code>etc\ini\*.bat</code>.</td></tr>
+  <tr><td>Venv suddenly can't start (<code>No module named 'encodings'</code>)</td><td><code>PYTHONHOME</code> leaked from the QGIS environment into the venv's run. Keep the QGIS variables inside the 02 run configuration only.</td></tr>
+  <tr><td>Windows QGIS: many layers unavailable, <code>database is locked</code></td><td>Project opened from <code>\\wsl.localhost\...</code>. Open the copy on the Windows drive.</td></tr>
+  <tr><td>QGIS warns that a font is missing</td><td>Rebuild with 02 v2.6.1 or later; labels use Arial, and validation rejects any other label font.</td></tr>
+  <tr><td>Indexing very slow on the WSL project</td><td>Use <span class="menu">Remote Development ▸ WSL</span>, or exclude <code>.venv</code>, <code>build</code> and <code>data</code> (right-click ▸ <span class="menu">Mark Directory as ▸ Excluded</span>).</td></tr>
+  <tr><td>macOS: “QGIS-LTR can't be opened”</td><td>Gatekeeper. Finder ▸ right-click the app ▸ <span class="menu">Open</span> once.</td></tr>
+  <tr><td>Step 01 times out</td><td>The DC GIS services are slow or down. Re-run with <code>--timeout 120 --retries 8</code>.</td></tr>
+</table></div>
+
+<footer>
+  <p>DDOT Maintenance Operations GIS · <code>02_create_qgis_project.py</code> v2.6.1 · Windows and WSL steps checked on the author's machines (QGIS 3.44.15 OSGeo4W, QGIS 3.40.8 Ubuntu). macOS steps not yet run.</p>
+</footer>
+</div>
+
+<script>
+(function () {
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+  function select(id) {
+    tabs.forEach(function (t) {
+      var on = t.id === id;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+    try { localStorage.setItem('pycharm-guide-tab', id); } catch (e) {}
+  }
+  tabs.forEach(function (t) { t.addEventListener('click', function () { select(t.id); }); });
+  var saved = null;
+  try { saved = localStorage.getItem('pycharm-guide-tab'); } catch (e) {}
+  if (!saved) {
+    var ua = navigator.userAgent || '';
+    saved = /Mac/.test(ua) ? 'tab-mac' : (/Linux/.test(ua) ? 'tab-wsl' : 'tab-win');
+  }
+  if (document.getElementById(saved)) select(saved);
+
+  var root = document.documentElement, btn = document.getElementById('themeBtn');
+  try { var th = localStorage.getItem('pycharm-guide-theme'); if (th) root.setAttribute('data-theme', th); } catch (e) {}
+  btn.addEventListener('click', function () {
+    var dark = root.getAttribute('data-theme') ? root.getAttribute('data-theme') === 'dark'
+      : window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var next = dark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('pycharm-guide-theme', next); } catch (e) {}
+  });
+
+  document.querySelectorAll('pre').forEach(function (pre) {
+    var b = document.createElement('button');
+    b.className = 'copy'; b.type = 'button'; b.textContent = 'Copy';
+    b.addEventListener('click', function () {
+      var text = pre.querySelector('code').innerText;
+      var done = function () { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1400); };
+      if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done, function () { b.textContent = 'Select & copy'; }); }
+      else { b.textContent = 'Select & copy'; }
+    });
+    pre.appendChild(b);
+  });
+})();
+</script>
+</body>
+</html>

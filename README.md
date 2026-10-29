@@ -36,6 +36,7 @@ Fulton_Q_Shannon_GIS_V2/
 ├── ddot_maintenance_operations.qgz    # QGIS project (relative paths - open directly after unzipping)
 ├── QGIS_Dashboard_Guide.md            # Step-by-step: build a QGIS dashboard from shapefiles/
 ├── shapefiles_map.qgz                 # Shapefile-only project: street labels + OpenStreetMap basemap
+├── PyCharm_Setup_Guide.html           # PyCharm Pro setup on Windows, WSL Ubuntu and macOS (open in a browser)
 ├── data/
 │   └── ddot_maintenance_operations.gpkg
 │       ├── roadway_subblock_enriched    # Enriched roadway centerlines (MultiLineString)
