@@ -45,13 +45,16 @@ import zipfile
 from pathlib import Path
 from typing import Sequence
 
-__version__ = "2.6.0"
+__version__ = "2.6.1"
 
 LOG = logging.getLogger("ddot_gis.project")
 
 PROJECT_TITLE = "DDOT Maintenance Operations - Permits, Service Requests & Subblocks"
 QGZ_NAME = "ddot_maintenance_operations.qgz"
 SHP_QGZ_NAME = "shapefiles_map.qgz"  # shapefile-only companion project
+# Label font set explicitly: left unset, QGIS saves its platform default (e.g. "DejaVu LGC Sans"
+# on Linux), which other machines lack. Arial ships with Windows and macOS and is common on Linux.
+LABEL_FONT = "Arial"
 GPKG_REL = Path("data") / "ddot_maintenance_operations.gpkg"
 
 LAYER_SUBBLOCKS = "roadway_subblock_enriched"
@@ -344,11 +347,13 @@ def _street_labels(lyr, field: str = "ROUTENAME", max_scale: int = 20000) -> Non
     pieces of one street are merged so each name is drawn once per stretch.
     """
     from qgis.core import Qgis, QgsPalLayerSettings, QgsTextBufferSettings, QgsTextFormat, QgsVectorLayerSimpleLabeling
-    from qgis.PyQt.QtGui import QColor
+    from qgis.PyQt.QtGui import QColor, QFont
 
     if lyr.fields().indexOf(field) < 0:
         return
     fmt = QgsTextFormat()
+    fmt.setFont(QFont(LABEL_FONT))
+    fmt.setNamedStyle("Regular")
     fmt.setSize(8)
     fmt.setColor(QColor("#303030"))
     buffer = QgsTextBufferSettings()
@@ -714,6 +719,13 @@ def build_shapefile_project(project_dir: Path, include_basemap: bool = True) -> 
     return qgz
 
 
+def _check_fonts(name: str, xml: str) -> None:
+    """Fail if a saved label style names any font other than LABEL_FONT."""
+    fonts = set(re.findall(r'<text-style[^>]*?fontFamily="([^"]*)"', xml))
+    if fonts - {LABEL_FONT}:
+        raise RuntimeError(f"{name} uses fonts other than {LABEL_FONT}: {sorted(fonts - {LABEL_FONT})}")
+
+
 def validate_shapefile_project(qgz: Path) -> None:
     """Reload shapefiles_map.qgz and check every shapefile resolves via a relative path."""
     from qgis.core import QgsProject
@@ -730,6 +742,7 @@ def validate_shapefile_project(qgz: Path) -> None:
         xml = zf.read(next(n for n in zf.namelist() if n.endswith(".qgs"))).decode("utf-8")
     if str(qgz.parent.resolve()) in xml:
         raise RuntimeError(f"{qgz.name} stores absolute paths; it would break once unzipped elsewhere")
+    _check_fonts(qgz.name, xml)
     LOG.info("Validated %s (%d layers, relative paths)", qgz.name, len(proj.mapLayers()))
     proj.clear()
 
@@ -765,6 +778,7 @@ def validate_project(qgz: Path) -> None:
         xml = zf.read(qgs).decode("utf-8")
     if str(qgz.parent.resolve()) in xml:
         raise RuntimeError("Project stores absolute paths; it would break once unzipped elsewhere")
+    _check_fonts(qgz.name, xml)
     LOG.info("Validated %s (%d layers in %d groups, relative paths)", qgz.name, len(proj.mapLayers()), len(groups))
     proj.clear()
 
