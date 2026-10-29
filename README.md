@@ -35,6 +35,7 @@ Fulton_Q_Shannon_GIS_V2/
 ├── 01_pull_and_process_data.py        # REST extraction, snapping, enrichment, GeoPackage + report
 ├── ddot_maintenance_operations.qgz    # QGIS project (relative paths - open directly after unzipping)
 ├── QGIS_Dashboard_Guide.md            # Step-by-step: build a QGIS dashboard from shapefiles/
+├── shapefiles_map.qgz                 # Shapefile-only project: street labels + OpenStreetMap basemap
 ├── data/
 │   └── ddot_maintenance_operations.gpkg
 │       ├── roadway_subblock_enriched    # Enriched roadway centerlines (MultiLineString)
@@ -246,6 +247,10 @@ Key subblock fields: `SUBBLK_UID` (`SUBBLOCK_UID`), `PRMT_CNT` (`PERMIT_COUNT`),
 | Insights & geoprocessing history (tables) | 3 insight tables + geoprocessing history | - | Attribute tables |
 | Basemap | Esri World Light Gray | on | XYZ tiles |
 | | OpenStreetMap | off | XYZ tiles |
+
+Street names (`ROUTENAME`, e.g. `13TH ST NW`) label the roadway subblock layers once zoomed in past
+1:20,000; ramps are left unlabelled. `shapefiles_map.qgz` is a companion project with only the six
+shapefiles, the same labels and an OpenStreetMap basemap (street names at every zoom).
 
 The live REST layers apply the same definition queries as the analysis.
 Project CRS is EPSG:2248. All local paths are relative, so the project opens anywhere once unzipped.

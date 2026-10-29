@@ -3,7 +3,8 @@
 02_create_qgis_project.py - DDOT Maintenance Operations GIS Analysis
 
 Exports one shapefile per filter / question in the data request to
-shapefiles/, builds the QGIS project `ddot_maintenance_operations.qgz` from the
+shapefiles/ (plus shapefiles_map.qgz, a shapefile-only project with street
+labels and an OpenStreetMap basemap), builds the QGIS project `ddot_maintenance_operations.qgz` from the
 GeoPackage produced by 01_pull_and_process_data.py, validates the saved project
 by reloading it, and packages the project folder as
 <First>_<MI>_<Last>_GIS[_V<n>].zip.
@@ -44,12 +45,13 @@ import zipfile
 from pathlib import Path
 from typing import Sequence
 
-__version__ = "2.5.0"
+__version__ = "2.6.0"
 
 LOG = logging.getLogger("ddot_gis.project")
 
 PROJECT_TITLE = "DDOT Maintenance Operations - Permits, Service Requests & Subblocks"
 QGZ_NAME = "ddot_maintenance_operations.qgz"
+SHP_QGZ_NAME = "shapefiles_map.qgz"  # shapefile-only companion project
 GPKG_REL = Path("data") / "ddot_maintenance_operations.gpkg"
 
 LAYER_SUBBLOCKS = "roadway_subblock_enriched"
@@ -335,6 +337,63 @@ def _set_display(lyr, field: str) -> None:
         lyr.setDisplayExpression(f'"{field}"')
 
 
+def _street_labels(lyr, field: str = "ROUTENAME", max_scale: int = 20000) -> None:
+    """Label centerlines with the street name (e.g. '13TH ST NW') once zoomed in past 1:``max_scale``.
+
+    Ramps carry generated names ('Ramp-36005282') and are left unlabelled; connected
+    pieces of one street are merged so each name is drawn once per stretch.
+    """
+    from qgis.core import Qgis, QgsPalLayerSettings, QgsTextBufferSettings, QgsTextFormat, QgsVectorLayerSimpleLabeling
+    from qgis.PyQt.QtGui import QColor
+
+    if lyr.fields().indexOf(field) < 0:
+        return
+    fmt = QgsTextFormat()
+    fmt.setSize(8)
+    fmt.setColor(QColor("#303030"))
+    buffer = QgsTextBufferSettings()
+    buffer.setEnabled(True)
+    buffer.setSize(0.8)
+    buffer.setColor(QColor("#ffffff"))
+    fmt.setBuffer(buffer)
+
+    pal = QgsPalLayerSettings()
+    pal.fieldName = f"CASE WHEN \"{field}\" NOT LIKE 'Ramp-%' THEN \"{field}\" END"
+    pal.isExpression = True
+    pal.placement = Qgis.LabelPlacement.Curved
+    pal.lineSettings().setMergeLines(True)
+    pal.scaleVisibility = True
+    pal.minimumScale = max_scale  # QGIS: "minimum" = most zoomed-out scale shown
+    pal.maximumScale = 0
+    pal.setFormat(fmt)
+    lyr.setLabeling(QgsVectorLayerSimpleLabeling(pal))
+    lyr.setLabelsEnabled(True)
+
+
+def _shapefile_layer(project_dir: Path, stem: str, display: str, source_layer: str):
+    """Load ``shapefiles/<stem>.shp`` styled like its GeoPackage counterpart."""
+    from qgis.core import QgsVectorLayer
+
+    shp = QgsVectorLayer(str(project_dir / SHP_DIR / f"{stem}.shp"), display, "ogr")
+    if not shp.isValid():
+        raise RuntimeError(f"Shapefile {stem}.shp could not be loaded - export it first")
+    if source_layer == LAYER_PERMITS:
+        shp.setRenderer(_marker_renderer("circle", "#8e0152", 2.4))
+        _set_display(shp, "PERMIT_NO")
+    elif source_layer == LAYER_SERVICE_REQUESTS:
+        shp.setRenderer(_marker_renderer("triangle", "#542788", 2.8))
+        _set_display(shp, "REQUEST_ID")
+    elif stem == "subblocks_with_permits_and_srs":
+        shp.setRenderer(_conflict_renderer())
+        _set_display(shp, "ROUTENAME")
+    else:
+        shp.setRenderer(_categorized_activity_renderer(field="ACTIVITY"))
+        _set_display(shp, "ROUTENAME")
+    if stem == "roadway_subblock_filtered":
+        _street_labels(shp)
+    return shp
+
+
 # -----------------------------------------------------------------------------
 # Shapefile export
 # -----------------------------------------------------------------------------
@@ -484,6 +543,7 @@ def build_project(project_dir: Path, include_live: bool = True, include_basemap:
     srs.setRenderer(_marker_renderer("triangle", "#542788", 2.8))
     subblocks = _local_layer(gpkg, LAYER_SUBBLOCKS, "Roadway subblock - enriched")
     subblocks.setRenderer(_categorized_activity_renderer())
+    _street_labels(subblocks)
     blocks = _local_layer(gpkg, LAYER_BLOCKS, "Roadway block (BLOCKID) - enriched")
     blocks.setRenderer(_categorized_activity_renderer(width_scale=1.6))
     for lyr, visible in ((conflicts, True), (permits, True), (srs, True), (subblocks, True), (blocks, False)):
@@ -500,19 +560,8 @@ def build_project(project_dir: Path, include_live: bool = True, include_basemap:
     if include_shapefiles:
         shp_group = root.addGroup(GROUP_SHAPEFILES)
         shp_group.setExpanded(False)
-        styles = {LAYER_PERMITS: lambda: _marker_renderer("circle", "#8e0152", 2.4),
-                  LAYER_SERVICE_REQUESTS: lambda: _marker_renderer("triangle", "#542788", 2.8)}
         for stem, display, layer, *_ in SHAPEFILE_EXPORTS:
-            shp = QgsVectorLayer(str(project_dir / SHP_DIR / f"{stem}.shp"), display, "ogr")
-            if not shp.isValid():
-                raise RuntimeError(f"Shapefile {stem}.shp could not be loaded - export it first")
-            if layer in styles:
-                shp.setRenderer(styles[layer]())
-            elif stem == "subblocks_with_permits_and_srs":
-                shp.setRenderer(_conflict_renderer())
-            else:
-                shp.setRenderer(_categorized_activity_renderer(field="ACTIVITY"))
-            add(shp_group, shp, visible=False)
+            add(shp_group, _shapefile_layer(project_dir, stem, display, layer), visible=False)
 
     # --- Live REST sources ---------------------------------------------------
     if include_live:
@@ -609,6 +658,80 @@ def build_project(project_dir: Path, include_live: bool = True, include_basemap:
         raise RuntimeError(f"QGIS failed to write {qgz}: {project.error()}")
     LOG.info("Wrote %s", qgz.name)
     return qgz
+
+
+def build_shapefile_project(project_dir: Path, include_basemap: bool = True) -> Path:
+    """Write shapefiles_map.qgz: only the shapefile exports, street-name labels and an
+    OpenStreetMap basemap (street names at every zoom), for use without the GeoPackage."""
+    from qgis.core import Qgis, QgsProject, QgsRasterLayer, QgsReferencedRectangle
+
+    qgz = project_dir / SHP_QGZ_NAME
+    project = QgsProject.instance()
+    project.clear()
+    project.setFileName(str(qgz))
+    project.setTitle(f"{PROJECT_TITLE} (shapefiles)")
+    project.setFilePathStorage(Qgis.FilePathType.Relative)
+    root = project.layerTreeRoot()
+
+    # Draw order top -> bottom; the question layers start off so the map is not doubled up.
+    order = ("permits_filtered_snapped", "service_requests_filtered", "subblocks_with_permits_and_srs",
+             "subblocks_with_open_srs", "subblocks_with_permits", "roadway_subblock_filtered")
+    visible = {"permits_filtered_snapped", "service_requests_filtered", "subblocks_with_permits_and_srs",
+               "roadway_subblock_filtered"}
+    specs = {stem: (display, layer) for stem, display, layer, *_ in SHAPEFILE_EXPORTS}
+    group = root.addGroup(GROUP_SHAPEFILES)
+    roadway = None
+    for stem in order:
+        lyr = _shapefile_layer(project_dir, stem, *specs[stem])
+        project.addMapLayer(lyr, False)
+        node = group.addLayer(lyr)
+        node.setItemVisibilityChecked(stem in visible)
+        node.setExpanded(False)
+        roadway = lyr if stem == "roadway_subblock_filtered" else roadway
+
+    if include_basemap:
+        basemap = root.addGroup(GROUP_BASEMAP)
+        for name, uri, on in (("OpenStreetMap (street names)", OSM_URI, True),
+                              ("Esri World Light Gray", ESRI_LIGHT_GRAY_URI, False)):
+            lyr = QgsRasterLayer(uri, name, "wms")
+            if lyr.isValid():
+                project.addMapLayer(lyr, False)
+                basemap.addLayer(lyr).setItemVisibilityChecked(on)
+            else:
+                LOG.warning("Basemap %s could not be created; continuing without it", name)
+
+    crs = roadway.crs()
+    project.setCrs(crs)
+    project.setEllipsoid(crs.ellipsoidAcronym() or "EPSG:7019")
+    extent = roadway.extent()
+    if not extent.isEmpty():
+        extent.scale(1.05)
+        project.viewSettings().setDefaultViewExtent(QgsReferencedRectangle(extent, crs))
+
+    if not project.write(str(qgz)):
+        raise RuntimeError(f"QGIS failed to write {qgz}: {project.error()}")
+    LOG.info("Wrote %s", qgz.name)
+    return qgz
+
+
+def validate_shapefile_project(qgz: Path) -> None:
+    """Reload shapefiles_map.qgz and check every shapefile resolves via a relative path."""
+    from qgis.core import QgsProject
+
+    proj = QgsProject()
+    if not proj.read(str(qgz)):
+        raise RuntimeError(f"Saved project {qgz} cannot be re-opened: {proj.error()}")
+    shps = {Path(l.source().split("|")[0]).name for l in proj.mapLayers().values()
+            if l.providerType() == "ogr" and l.isValid()}
+    missing = {f"{stem}.shp" for stem, *_ in SHAPEFILE_EXPORTS} - shps
+    if missing:
+        raise RuntimeError(f"{qgz.name} is missing or cannot load: {sorted(missing)}")
+    with zipfile.ZipFile(qgz) as zf:
+        xml = zf.read(next(n for n in zf.namelist() if n.endswith(".qgs"))).decode("utf-8")
+    if str(qgz.parent.resolve()) in xml:
+        raise RuntimeError(f"{qgz.name} stores absolute paths; it would break once unzipped elsewhere")
+    LOG.info("Validated %s (%d layers, relative paths)", qgz.name, len(proj.mapLayers()))
+    proj.clear()
 
 
 def validate_project(qgz: Path) -> None:
@@ -716,6 +839,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         qgz = build_project(project_dir, include_live=not args.no_live_layers, include_basemap=not args.no_basemap,
                             include_shapefiles=not args.no_shapefiles)
         validate_project(qgz)
+        if not args.no_shapefiles:
+            validate_shapefile_project(build_shapefile_project(project_dir, include_basemap=not args.no_basemap))
     except Exception as exc:
         LOG.exception("Project build failed: %s", exc)
         return 1
