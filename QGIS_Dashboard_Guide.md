@@ -221,5 +221,6 @@ Expected totals for the current data run: 9,294 permit records on subblocks, 634
 | Layer shows a red "!" after moving the folder | Right-click ▸ **Change Data Source…**, or reopen the project with *Handle Bad Layers* and point to `shapefiles/`. |
 | KPI label shows `NULL` | Layer name in `aggregate()` doesn't match the Layers panel name (see Part 3 note). |
 | Date filter returns nothing | Compare with `to_date('YYYY-MM-DD')`, not a plain string; shapefile dates have no time part. |
+| Many layers unavailable / `database is locked` | The project was opened from `\\wsl.localhost\...`. Open the copy on the Windows drive instead (README section 7). |
 | Basemap is blank | It needs internet access; the analysis layers work offline. |
 | Ward filter returns nothing | Wards are text: `'6'`, not `6`. |

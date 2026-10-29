@@ -266,6 +266,16 @@ The script exits non-zero on failure and logs to `logs/geoprocessing_history.log
 `ddot_maintenance_operations.qgz` afterwards shows the refreshed GeoPackage layers. The shapefiles
 are a static export: they are regenerated when the project is rebuilt, not by this script.
 
+**Windows QGIS with WSL:** open the project from a Windows folder, not from `\\wsl.localhost\...`.
+The GeoPackage is a SQLite database and cannot be opened over the WSL network share, so every
+GeoPackage layer shows as unavailable there (the shapefiles still load). After a rebuild in WSL, copy
+the folder across first, e.g.
+
+```bash
+rsync -a --exclude='.venv/' --exclude='__pycache__/' --exclude='.pytest_cache/' --exclude='build/' \
+  ./ /mnt/c/Users/<you>/OneDrive/Desktop/python_qgis/
+```
+
 ## 8. Limitations
 
 * Results are a snapshot of the live services at run time; re-run to refresh.
