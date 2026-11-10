@@ -1,7 +1,0 @@
-# 01_pull_and_process_data.py
-geopandas>=1.0
-pandas>=2.2
-pyogrio>=0.9
-pyproj>=3.6
-requests>=2.31
-shapely>=2.0

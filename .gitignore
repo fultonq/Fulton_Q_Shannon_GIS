@@ -1,17 +1,14 @@
-# Environments / IDE
-.venv/
-.idea/
+# Python
 __pycache__/
 *.pyc
-.pytest_cache/
-
-# Build output (zip and local builds)
-build/
-*.zip
-
-# Transient GeoPackage / QGIS files
-data/.*.tmp.gpkg
+.venv/
+# GeoPackage / QGIS temp files
 *.gpkg-wal
 *.gpkg-shm
 *.qgz~
 *.qgs~
+# Cached REST pages (re-created by scripts/01_download.py)
+data/raw/*/
+# Raw REST download (134 MB, over GitHub's 100 MB file limit). Re-create it with
+# scripts/01_download.py. It is also included in submission/FirstName_M_LastName_GIS.zip.
+data/raw/raw_downloads.gpkg

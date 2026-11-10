@@ -1,0 +1,3 @@
+{"layer": "permits_raw", "url": "https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_APPS/DDOT_TOPS/MapServer/23", "server_where": "1=1", "expected": 55345, "written": 55345, "downloaded_utc": "2026-11-09T19:40:49Z"}
+{"layer": "roadway_subblock_raw", "url": "https://maps2.dcgis.dc.gov/dcgis/rest/services/DCGIS_DATA/Transportation_WebMercator/MapServer/162", "server_where": "1=1", "expected": 34964, "written": 34964, "downloaded_utc": "2026-11-09T19:40:56Z"}
+{"layer": "cityworks_sr_raw", "url": "https://maps2.dcgis.dc.gov/dcgis/rest/services/DDOT/Cityworks/MapServer/1", "server_where": "INITIATEDDATE >= timestamp '2025-10-01 00:00:00'", "expected": 79313, "written": 79313, "downloaded_utc": "2026-11-09T19:39:00Z"}

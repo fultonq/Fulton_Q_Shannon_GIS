@@ -1,0 +1,31 @@
+== Layers in X:\gis-cs12-data-scientist\data\output\CS12_Roadway_Enrichment.gpkg
+  permit_snap_lines                    10,008  Line String
+  permits_filtered_snapped             10,008  Point
+  permits_filtered_original            10,008  Point
+  cityworks_sr_filtered                   653  Point
+  roadway_subblock_enriched            23,104  Line String
+  roadway_subblock_permits_and_sr          98  Line String
+  summary_permits_by_subblock           2,525  None
+  summary_sr_by_subblock                  541  None
+== Enrichment fields: [('SUBBLOCKKEY', 'String'), ('PRMT_CNT', 'Integer'), ('PRMT_MAXEX', 'DateTime'), ('SR_CNT', 'Integer'), ('SR_MAXINIT', 'DateTime'), ('HAS_PRMT', 'Integer'), ('HAS_SR', 'Integer'), ('BOTH_FLAG', 'Integer'), ('FLAG_CAT', 'String')]
+== Subblocks by ROADTYPE: [['1', 22393], ['2', 121], ['3', 590]]
+== FLAG_CAT: [['Permits + SRs', 98, 438, 128], ['SRs only', 443, 0, 515], ['Permits only', 2427, 9496, 0], ['Neither', 20136, 0, 0]]
+== Totals (blocks w/ permits, permits counted, blocks w/ SR, SRs counted, both): [[2525, 9934, 541, 643, 98]]
+== Max dates overall: [['2027-11-07T10:00:00Z', '2026-11-09T09:00:00Z', '2026-11-09T00:15:48Z', '2025-10-06T12:54:33Z']]
+== Permit snap status: [['SNAPPED - alley/driveway/other (not counted)', 0, 74, 0.113, 3.652], ['SNAPPED - street/service lane/ramp', 1, 9934, 0.566, 4.775]]
+== Permit counted check (sum PRMT_CNT == COUNTED permits): [[9934, 9934]]
+== SR status: [['GEO ISSUE', 'ROADWAY REPAIR', 1, 1], ['INSPCOMP', 'ROADWAY REPAIR', 288, 5], ['OPEN', 'ROADWAY REPAIR', 182, 4], ['PENDING', 'POTHOLES', 57, 0], ['PENDING', 'ROADWAY REPAIR', 125, 0]]
+== SR counted check: [[643, 643]]
+== Duplicate permits in snapped layer: [[0]]
+== Snapped permits lying on their street/svc/ramp subblock (n, within 1 cm): [[9934, 9934]]
+== Top 10 blocks with permits AND SRs:
+    ['56aff6711bad98f2a17bcfa20b17d6fa', '13TH ST NE', 'Block Only', 'Block Only', 70, '2026/12/08 10:00:00+00', 1, '2026/06/28 20:12:21+00']
+    ['6c136b7900c1d187f38bdb5b57646013', 'COLUMBIA RD NW', 'Block Only', 'Block Only', 34, '2026/12/12 09:00:00+00', 1, '2026/09/03 10:08:59+00']
+    ['d730f0518e4f6077825a0745c8613078', 'FARRAGUT ST NW', 'Block Only', 'Block Only', 25, '2026/12/06 09:00:00+00', 1, '2026/09/05 19:25:02+00']
+    ['5d332fe51293ecf482f0e357d46dd737', 'RESERVOIR RD NW', 'Block Only', 'Block Only', 22, '2026/11/18 09:00:00+00', 2, '2026/09/28 16:14:08+00']
+    ['6c3a1f4813c371cfc4ef52754e91e7a4', 'RHODE ISLAND AVE NW', 'Block Only', 'Block Only', 19, '2026/11/13 09:00:00+00', 1, '2026/03/06 20:21:12+00']
+    ['608aaea07f4f16a0183bb182391fbc52', '31ST PL NW', 'Block Only', 'Block Only', 17, '2027/03/28 08:00:00+00', 1, '2026/06/30 00:30:46+00']
+    ['b59a4b69d57ebf9abb3e2fc23effe17d', 'NEW HAMPSHIRE AVE NW', 'Block Only', 'Block Only', 17, '2026/12/29 10:00:00+00', 1, '2026/04/07 16:43:15+00']
+    ['9e392fb959d4010a4527a8a5a44cf393', 'R ST NW', 'Block Only', 'Block Only', 17, '2026/12/26 09:00:00+00', 1, '2026/11/03 20:44:49+00']
+    ['de8786e38431c68f13f55a980897dc74', 'ROCK CREEK CHURCH RD NW', 'Block Only', 'Block Only', 15, '2026/12/09 09:00:00+00', 1, '2026/05/30 00:54:25+00']
+    ['cfb9370629e483ed43abb4333a1ecaa0', 'IRVING ST NE', 'Block Only', 'Block Only', 13, '2026/12/27 09:00:00+00', 1, '2026/08/16 19:30:35+00']
