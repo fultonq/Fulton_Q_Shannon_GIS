@@ -1,7 +1,7 @@
 """
 Step 6 - Zip the project folder as <Name>_GIS.zip and verify the zipped project opens.
 
-Usage: python-qgis.bat 06_package.py [FirstName_M_LastName] [verify_dir]
+Usage: python-qgis.bat 06_package.py [FirstName_M_LastName] [verify_dir]   (default name: Fulton_Q_Shannon)
 """
 import os
 import shutil
@@ -11,12 +11,12 @@ import zipfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import qgis_env as Q  # noqa: E402
 
-NAME = (sys.argv[1] if len(sys.argv) > 1 else "FirstName_M_LastName") + "_GIS"
+NAME = (sys.argv[1] if len(sys.argv) > 1 else "Fulton_Q_Shannon") + "_GIS"
 ROOT = Q.ROOT
 OUT_DIR = os.path.join(ROOT, "submission")
 ZIP = os.path.join(OUT_DIR, NAME + ".zip")
 
-SKIP_DIRS = {"submission", "__pycache__", ".venv"}
+SKIP_DIRS = {"submission", "__pycache__", ".venv", ".git"}
 
 
 def include(rel):

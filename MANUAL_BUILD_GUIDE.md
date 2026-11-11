@@ -315,5 +315,5 @@ Each of these should hold:
 2. **Project > Save As…** saves a `.qgz` in the project folder.
 3. **Project > Properties > General**: make sure **Save paths** is set to **Relative**.
 4. To package everything, zip the whole project folder as
-   `FirstName_MiddleInitial_LastName_GIS.zip`. Alternatively, run **Package layers** to put
+   `FirstName_MiddleInitial_LastName_GIS.zip` (for this submission, `Fulton_Q_Shannon_GIS.zip`). Alternatively, run **Package layers** to put
    all result layers into one GeoPackage, then zip that file together with the `.qgz`.
